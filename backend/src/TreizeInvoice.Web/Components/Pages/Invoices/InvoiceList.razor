@@ -26,13 +26,62 @@
     <div class="alert alert-success">@_success</div>
 }
 
-@if (_invoices is null)
+<section class="panel filters">
+    <div class="filter-row">
+        <div class="form-group grow">
+            <label for="fText">Suche</label>
+            <input id="fText" class="form-control" type="search" placeholder="Rechnungsnummer oder Kunde"
+                   value="@_text" @oninput="e => ApplyText(e.Value?.ToString())" />
+        </div>
+        <div class="form-group">
+            <label for="fStatus">Status</label>
+            <select id="fStatus" class="form-select" value="@(_status?.ToString() ?? "")"
+                    @onchange="e => ApplyStatus(e.Value?.ToString())">
+                <option value="">Alle</option>
+                <option value="@nameof(InvoiceStatus.Draft)">Entwurf</option>
+                <option value="@nameof(InvoiceStatus.Issued)">Gestellt</option>
+                <option value="@nameof(InvoiceStatus.Paid)">Bezahlt</option>
+                <option value="@nameof(InvoiceStatus.Cancelled)">Storniert</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="fFrom">Datum von</label>
+            <input id="fFrom" class="form-control" type="date"
+                   value="@_from?.ToString("yyyy-MM-dd")" @onchange="e => ApplyFrom(e.Value?.ToString())" />
+        </div>
+        <div class="form-group">
+            <label for="fTo">bis</label>
+            <input id="fTo" class="form-control" type="date"
+                   value="@_to?.ToString("yyyy-MM-dd")" @onchange="e => ApplyTo(e.Value?.ToString())" />
+        </div>
+        <div class="form-group narrow">
+            <label for="fMin">Betrag ab</label>
+            <input id="fMin" class="form-control text-end" type="number" step="0.01" placeholder="0,00"
+                   value="@_min" @onchange="e => ApplyMin(e.Value?.ToString())" />
+        </div>
+        <div class="form-group narrow">
+            <label for="fMax">bis</label>
+            <input id="fMax" class="form-control text-end" type="number" step="0.01" placeholder="—"
+                   value="@_max" @onchange="e => ApplyMax(e.Value?.ToString())" />
+        </div>
+        @if (HasFilter)
+        {
+            <button type="button" class="btn btn-sm reset" @onclick="ResetFilters">Filter zurücksetzen</button>
+        }
+    </div>
+</section>
+
+@if (_page is null)
 {
     <p>Wird geladen…</p>
 }
-else if (_invoices.Count == 0)
+else if (_page.TotalCount == 0)
 {
-    <section class="panel"><p class="text-muted mb-0">Noch keine Rechnungen.</p></section>
+    <section class="panel">
+        <p class="text-muted mb-0">
+            @(HasFilter ? "Keine Rechnung passt zu diesen Filtern." : "Noch keine Rechnungen.")
+        </p>
+    </section>
 }
 else
 {
@@ -40,16 +89,16 @@ else
     <table class="table table-hover align-middle">
         <thead>
             <tr>
-                <th>Nummer</th>
-                <th>Kunde</th>
-                <th>Datum</th>
-                <th>Status</th>
-                <th class="text-end">Betrag</th>
+                <th><SortButton Column="InvoiceSort.Number" Current="_sort" Descending="_desc" OnSort="SortBy">Nummer</SortButton></th>
+                <th><SortButton Column="InvoiceSort.Client" Current="_sort" Descending="_desc" OnSort="SortBy">Kunde</SortButton></th>
+                <th><SortButton Column="InvoiceSort.Date" Current="_sort" Descending="_desc" OnSort="SortBy">Datum</SortButton></th>
+                <th><SortButton Column="InvoiceSort.Status" Current="_sort" Descending="_desc" OnSort="SortBy">Status</SortButton></th>
+                <th class="text-end"><SortButton Column="InvoiceSort.Amount" Current="_sort" Descending="_desc" OnSort="SortBy">Betrag</SortButton></th>
                 <th class="text-end">Aktionen</th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var inv in _invoices)
+            @foreach (var inv in _page.Items)
             {
                 <tr>
                     <td>
@@ -78,6 +127,7 @@ else
                         @if (inv.Status == InvoiceStatus.Issued && inv.CancelsInvoiceId is null)
                         {
                             <button class="btn btn-sm btn-success" @onclick="() => MarkPaidAsync(inv.Id)">Als bezahlt</button>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => _pendingCorrect = inv">Korrigieren</button>
                             <button class="btn btn-sm btn-outline-warning" @onclick="() => _pendingCancel = inv">Stornieren</button>
                         }
                         <button class="btn btn-sm" @onclick="() => DuplicateAsync(inv.Id)">Duplizieren</button>
@@ -87,6 +137,40 @@ else
         </tbody>
     </table>
     </section>
+
+    <div class="pager">
+        <span>
+            @($"{_page.TotalCount} Rechnung{(_page.TotalCount == 1 ? "" : "en")}")
+            @if (_page.PageCount > 1)
+            {
+                <text> · Seite @_page.Page von @_page.PageCount</text>
+            }
+        </span>
+        @if (_page.PageCount > 1)
+        {
+            <span class="pager-buttons">
+                <button class="btn btn-sm" disabled="@(!_page.HasPrevious)" @onclick="() => GoToPage(_page.Page - 1)">Zurück</button>
+                <button class="btn btn-sm" disabled="@(!_page.HasNext)" @onclick="() => GoToPage(_page.Page + 1)">Weiter</button>
+            </span>
+        }
+    </div>
+}
+
+@if (_pendingCorrect is not null)
+{
+    <div class="alert alert-warning">
+        <p class="mb-2">
+            <strong>Rechnung @_pendingCorrect.InvoiceNumber korrigieren?</strong><br />
+            Eine gestellte Rechnung lässt sich nicht bearbeiten — das verlangen die
+            GoBD. TreizeInvoice erledigt die zulässige Korrektur in einem Schritt:
+            es wird eine Stornorechnung erstellt und anschließend ein neuer Entwurf
+            mit denselben Positionen geöffnet, den Sie berichtigen und neu ausstellen.
+        </p>
+        <button class="btn btn-sm btn-primary" @onclick="ConfirmCorrectAsync" disabled="@_working">
+            @(_working ? "Wird vorbereitet…" : "Stornieren und neu erfassen")
+        </button>
+        <button class="btn btn-sm" @onclick="() => _pendingCorrect = null">Abbrechen</button>
+    </div>
 }
 
 @if (_pendingIssue is not null)
@@ -131,18 +215,137 @@ else
 }
 
 @code {
-    private List<Invoice>? _invoices;
+    private InvoicePage<Invoice>? _page;
     private Invoice? _pendingDelete;
     private Invoice? _pendingIssue;
     private Invoice? _pendingCancel;
+    private Invoice? _pendingCorrect;
     private bool _issuing;
     private bool _working;
     private string? _error;
     private string? _success;
 
+    private string? _text;
+    private InvoiceStatus? _status;
+    private DateOnly? _from;
+    private DateOnly? _to;
+    private decimal? _min;
+    private decimal? _max;
+    private InvoiceSort _sort = InvoiceSort.Date;
+    private bool _desc = true;
+    private int _pageNumber = 1;
+
+    // La frappe déclenche une requête à chaque touche : sans ce jeton, une réponse
+    // lente écraserait le résultat d'une saisie plus récente.
+    private CancellationTokenSource? _debounce;
+
+    private bool HasFilter =>
+        !string.IsNullOrWhiteSpace(_text) || _status is not null ||
+        _from is not null || _to is not null || _min is not null || _max is not null;
+
     protected override async Task OnInitializedAsync() => await Load();
 
-    private async Task Load() => _invoices = await InvoiceService.GetAllAsync();
+    private async Task Load()
+    {
+        _page = await InvoiceService.SearchAsync(new InvoiceQuery(
+            Text: _text, Status: _status, From: _from, To: _to,
+            MinAmount: _min, MaxAmount: _max,
+            Sort: _sort, Descending: _desc, Page: _pageNumber));
+    }
+
+    private async Task ReloadFromFirstPage()
+    {
+        _pageNumber = 1;
+        await Load();
+    }
+
+    private async Task ApplyText(string? value)
+    {
+        _text = value;
+        _debounce?.Cancel();
+        _debounce = new CancellationTokenSource();
+        var token = _debounce.Token;
+        try
+        {
+            await Task.Delay(300, token);
+            await ReloadFromFirstPage();
+            StateHasChanged();
+        }
+        catch (TaskCanceledException)
+        {
+            // Une frappe plus récente a pris le relais.
+        }
+    }
+
+    private async Task ApplyStatus(string? value)
+    {
+        _status = Enum.TryParse<InvoiceStatus>(value, out var s) ? s : null;
+        await ReloadFromFirstPage();
+    }
+
+    private async Task ApplyFrom(string? value)
+    {
+        _from = DateOnly.TryParse(value, out var d) ? d : null;
+        await ReloadFromFirstPage();
+    }
+
+    private async Task ApplyTo(string? value)
+    {
+        _to = DateOnly.TryParse(value, out var d) ? d : null;
+        await ReloadFromFirstPage();
+    }
+
+    private async Task ApplyMin(string? value)
+    {
+        _min = ParseAmount(value);
+        await ReloadFromFirstPage();
+    }
+
+    private async Task ApplyMax(string? value)
+    {
+        _max = ParseAmount(value);
+        await ReloadFromFirstPage();
+    }
+
+    // Le champ number renvoie toujours un point décimal, quelle que soit la culture.
+    private static decimal? ParseAmount(string? value) =>
+        decimal.TryParse(value, System.Globalization.NumberStyles.Number,
+            System.Globalization.CultureInfo.InvariantCulture, out var d)
+            ? d
+            : null;
+
+    private async Task ResetFilters()
+    {
+        _text = null;
+        _status = null;
+        _from = null;
+        _to = null;
+        _min = null;
+        _max = null;
+        await ReloadFromFirstPage();
+    }
+
+    private async Task SortBy(InvoiceSort column)
+    {
+        if (_sort == column)
+        {
+            _desc = !_desc;
+        }
+        else
+        {
+            _sort = column;
+            // Dates et montants sont plus utiles du plus grand au plus petit,
+            // les libellés dans l'ordre alphabétique.
+            _desc = column is InvoiceSort.Date or InvoiceSort.Amount;
+        }
+        await ReloadFromFirstPage();
+    }
+
+    private async Task GoToPage(int page)
+    {
+        _pageNumber = page;
+        await Load();
+    }
 
     private async Task MarkPaidAsync(int id)
     {
@@ -212,6 +415,31 @@ else
     {
         var copy = await InvoiceService.DuplicateAsDraftAsync(id);
         Nav.NavigateTo($"/app/rechnungen/{copy.Id}");
+    }
+
+    private async Task ConfirmCorrectAsync()
+    {
+        if (_pendingCorrect is null) return;
+
+        _error = null;
+        _success = null;
+        _working = true;
+        try
+        {
+            var draft = await InvoiceService.CorrectAsync(_pendingCorrect.Id);
+            Nav.NavigateTo($"/app/rechnungen/{draft.Id}");
+            return;
+        }
+        catch (DomainException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _working = false;
+            _pendingCorrect = null;
+        }
+        await Load();
     }
 
     private async Task ConfirmDeleteAsync()

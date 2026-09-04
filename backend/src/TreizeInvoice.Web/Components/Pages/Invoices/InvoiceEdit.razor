@@ -128,8 +128,47 @@ else
             <InputTextArea id="invNotes" class="form-control" rows="2" @bind-Value="_invoice.Notes" />
         </div>
 
+        <div class="save-as">
+            <div class="form-group">
+                <label for="saveAs">Beim Speichern</label>
+                <select id="saveAs" class="form-select" value="@_saveAs" @onchange="OnSaveAsChanged">
+                    <option value="@nameof(SaveMode.Draft)">Als Entwurf ablegen</option>
+                    <option value="@nameof(SaveMode.Issue)">Ausstellen (Nummer vergeben, PDF archivieren)</option>
+                    <option value="@nameof(SaveMode.IssueAndPay)">Ausstellen und sofort als bezahlt buchen</option>
+                </select>
+            </div>
+
+            <p class="save-as-note">
+                @switch (_saveAs)
+                {
+                    case SaveMode.Draft:
+                        <text>
+                            Der Entwurf bekommt noch keine Rechnungsnummer und bleibt frei
+                            änderbar. Nummern werden erst beim Ausstellen vergeben — so
+                            entstehen keine Lücken in der Nummernfolge.
+                        </text>
+                        break;
+                    case SaveMode.Issue:
+                        <text>
+                            Die Rechnung erhält ihre Nummer, das PDF wird archiviert und der
+                            Beleg ist damit festgeschrieben: Änderungen sind danach nur noch
+                            per Stornorechnung möglich (GoBD).
+                        </text>
+                        break;
+                    default:
+                        <text>
+                            Zusätzlich wird die Zahlung sofort im Journal als Einnahme
+                            gebucht — für Leistungen, die direkt bezahlt werden.
+                        </text>
+                        break;
+                }
+            </p>
+        </div>
+
         <div class="mt-3">
-            <button type="submit" class="btn btn-primary">Entwurf speichern</button>
+            <button type="submit" class="btn btn-primary" disabled="@_saving">
+                @(_saving ? "Wird gespeichert…" : SaveLabel)
+            </button>
             <a class="btn" href="/app/rechnungen">Abbrechen</a>
         </div>
     </EditForm>
@@ -139,13 +178,27 @@ else
 @code {
     [Parameter] public int? Id { get; set; }
 
+    private enum SaveMode { Draft, Issue, IssueAndPay }
+
     private Invoice? _invoice;
     private List<Client>? _clients;
     private readonly List<InvoiceItem> _items = new();
     private string? _error;
     private bool _locked;
+    private SaveMode _saveAs = SaveMode.Draft;
+    private bool _saving;
 
     private bool IsNew => Id is null;
+
+    private string SaveLabel => _saveAs switch
+    {
+        SaveMode.Issue => "Speichern und ausstellen",
+        SaveMode.IssueAndPay => "Ausstellen und als bezahlt buchen",
+        _ => "Als Entwurf speichern"
+    };
+
+    private void OnSaveAsChanged(ChangeEventArgs e) =>
+        _saveAs = Enum.TryParse<SaveMode>(e.Value?.ToString(), out var mode) ? mode : SaveMode.Draft;
 
     // Le calcul passe par le service pour rester cohérent avec le PDF (TVA ajoutable plus tard).
     private decimal CurrentTotal
@@ -210,17 +263,32 @@ else
         }
 
         _invoice.Items = _items;
+        _saving = true;
 
+        var id = _invoice.Id;
         try
         {
             if (IsNew)
-                await InvoiceService.CreateDraftAsync(_invoice);
+                id = (await InvoiceService.CreateDraftAsync(_invoice)).Id;
             else
                 await InvoiceService.UpdateDraftAsync(_invoice);
+
+            if (_saveAs is SaveMode.Issue or SaveMode.IssueAndPay)
+            {
+                var issued = await InvoiceService.IssueAsync(id);
+                if (_saveAs == SaveMode.IssueAndPay)
+                    await InvoiceService.MarkAsPaidAsync(issued.Id);
+            }
         }
         catch (DomainException ex)
         {
             _error = ex.Message;
+            _saving = false;
+
+            // Le brouillon est enregistré même si l'émission échoue. Sans cette
+            // redirection, un second envoi créerait un doublon.
+            if (IsNew && id != 0)
+                Nav.NavigateTo($"/app/rechnungen/{id}");
             return;
         }
 

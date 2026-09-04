@@ -89,6 +89,28 @@ Le mot de passe se change ensuite à tout moment depuis **Paramètres**.
   Une écriture générée par une facture ne se supprime pas à la main.
 - **Montants** en `decimal`, arrondi commercial `MidpointRounding.AwayFromZero`.
 
+## Liste des factures : recherche et tri
+Tout est appliqué en SQL puis paginé (`InvoiceQuery` → `InvoiceService.SearchAsync`) :
+le nombre de factures grandit indéfiniment, les charger toutes pour filtrer en mémoire
+ne tiendrait pas. Filtres : texte (numéro ou client), statut, période, fourchette de
+montant. Tri sur les cinq colonnes.
+
+Le tri par montant s'appuie sur `Invoice.TotalCents`, copie persistée du total tenue à
+jour par le service. Deux raisons : `Total` est calculé depuis les lignes et n'existe
+pas en base, et SQLite stocke les `decimal` en TEXT — un `ORDER BY` y serait
+alphabétique (« 90 » après « 1000 »). Les documents légaux et les montants affichés
+restent calculés depuis les lignes ; `TotalCents` ne sert qu'à trier et filtrer.
+
+## Cycle de vie d'une facture
+`Neue Rechnung` propose de choisir l'état visé dès la saisie : rester en brouillon,
+émettre, ou émettre et encaisser aussitôt. Le brouillon n'est pas une étape
+bureaucratique mais la conséquence de la numérotation : un numéro n'est attribué qu'à
+l'émission, sinon une saisie abandonnée laisserait un trou dans la séquence.
+
+Une facture émise ne se modifie pas (GoBD). `Korrigieren` enchaîne la seule correction
+licite : Stornorechnung, puis nouveau brouillon reprenant les lignes, à rectifier et
+réémettre. Les deux pièces d'origine restent en base.
+
 ## Export CSV (EÜR)
 `journal-{année}.csv` : séparateur `;`, virgule décimale, dates `TT.MM.JJJJ`, UTF-8 avec BOM
 — s'ouvre directement dans Excel en allemand. Les montants sont signés (dépenses négatives),

@@ -7,6 +7,9 @@ public interface IInvoiceService
     /// <summary>Liste des factures (client inclus), les plus récentes d'abord.</summary>
     Task<List<Invoice>> GetAllAsync();
 
+    /// <summary>Recherche filtrée, triée et paginée pour la liste des factures.</summary>
+    Task<InvoicePage<Invoice>> SearchAsync(InvoiceQuery query);
+
     /// <summary>Charge une facture avec ses lignes et son client.</summary>
     Task<Invoice?> GetAsync(int id);
 
@@ -35,6 +38,12 @@ public interface IInvoiceService
     /// numéro propre, PDF archivé). Retourne la facture d'annulation créée.
     /// </summary>
     Task<Invoice> CancelAsync(int id);
+
+    /// <summary>
+    /// Corrige une facture émise : crée la Stornorechnung puis un nouveau brouillon
+    /// reprenant les lignes de l'originale, prêt à être modifié. Retourne ce brouillon.
+    /// </summary>
+    Task<Invoice> CorrectAsync(int id);
 
     /// <summary>Relit le PDF archivé d'une facture émise. Le fichier n'est jamais régénéré.</summary>
     Task<(byte[] Content, string FileName)?> GetArchivedPdfAsync(int id);

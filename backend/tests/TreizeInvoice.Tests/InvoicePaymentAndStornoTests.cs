@@ -248,4 +248,41 @@ public class InvoicePaymentAndStornoTests
         Assert.Contains(db.Context.AuditLogs, a => a.EntityId == issued.Id && a.Action == "Cancelled");
         Assert.Contains(db.Context.AuditLogs, a => a.EntityId == storno.Id && a.Action == "StornoIssued");
     }
+
+    // --- Correction en un geste ---
+
+    [Fact]
+    public async Task Correct_StorneEtRendUnBrouillonReprenantLesLignes()
+    {
+        using var db = new TestDb();
+        var (service, issued) = await IssuedInvoiceAsync(db);
+
+        var draft = await service.CorrectAsync(issued.Id);
+
+        // La facture d'origine reste en base, annulée : rien n'est effacé (GoBD).
+        var original = await service.GetAsync(issued.Id);
+        Assert.Equal(InvoiceStatus.Cancelled, original!.Status);
+        Assert.NotNull(original.CancelledByInvoiceId);
+
+        // Le brouillon est modifiable et n'a pas encore de numéro.
+        Assert.Equal(InvoiceStatus.Draft, draft.Status);
+        Assert.Null(draft.InvoiceNumber);
+        Assert.Equal(issued.ClientId, draft.ClientId);
+        Assert.Equal(issued.Total, draft.Total);
+        Assert.Equal(issued.Items.Count, draft.Items.Count);
+    }
+
+    [Fact]
+    public async Task Correct_SurUneFactureDejaStornee_NeCreeAucunBrouillon()
+    {
+        using var db = new TestDb();
+        var (service, issued) = await IssuedInvoiceAsync(db);
+        await service.CancelAsync(issued.Id);
+
+        var before = db.Context.Invoices.Count();
+
+        await Assert.ThrowsAsync<DomainException>(() => service.CorrectAsync(issued.Id));
+
+        Assert.Equal(before, db.Context.Invoices.Count());
+    }
 }
