@@ -6,6 +6,7 @@ using TreizeInvoice.Services.Auditing;
 using TreizeInvoice.Services.Auth;
 using TreizeInvoice.Services.Clients;
 using TreizeInvoice.Services.Invoicing;
+using TreizeInvoice.Services.Journal;
 using TreizeInvoice.Services.Pdf;
 using TreizeInvoice.Services.Security;
 using TreizeInvoice.Services.Settings;
@@ -29,6 +30,7 @@ builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IInvoiceTotalsCalculator, KleinunternehmerTotalsCalculator>();
 builder.Services.AddScoped<IInvoiceNumberGenerator, InvoiceNumberGenerator>();
+builder.Services.AddScoped<IJournalService, JournalService>();
 
 // Logo monochrome de la landing page, réutilisé en en-tête des PDF.
 var logoPath = Path.GetFullPath(Path.Combine(
@@ -101,6 +103,12 @@ app.MapGet("/app/factures/{id:int}/pdf", async (int id, IInvoiceService invoices
     return pdf is null
         ? Results.NotFound()
         : Results.File(pdf.Value.Content, "application/pdf", pdf.Value.FileName);
+}).RequireAuthorization();
+
+app.MapGet("/app/journal/export", async (int year, IJournalService journal) =>
+{
+    var csv = await journal.ExportCsvAsync(year);
+    return Results.File(csv, "text/csv", $"journal-{year}.csv");
 }).RequireAuthorization();
 
 app.MapRazorComponents<App>()

@@ -93,6 +93,8 @@ public class AppDbContext : DbContext
             e.Property(j => j.Amount).HasPrecision(18, 2);
             e.Property(j => j.Description).IsRequired().HasMaxLength(500);
             e.Property(j => j.Category).HasMaxLength(100);
+            e.Ignore(j => j.IsGenerated);
+            e.Ignore(j => j.SignedAmount);
             e.HasOne(j => j.Invoice)
                 .WithMany()
                 .HasForeignKey(j => j.InvoiceId)

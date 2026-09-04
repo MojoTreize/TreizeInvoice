@@ -67,6 +67,8 @@ Le mot de passe se change ensuite à tout moment depuis **Paramètres**.
 - `/app/clients` — clients
 - `/app/factures` — factures
 - `/app/factures/{id}/pdf` — PDF archivé d'une facture émise
+- `/app/journal` — journal recettes/dépenses
+- `/app/journal/export?year=2026` — export CSV de l'année
 - `/app/parametres` — informations d'entreprise + changement de mot de passe
 
 ## Conformité (règles implémentées)
@@ -83,7 +85,14 @@ Le mot de passe se change ensuite à tout moment depuis **Paramètres**.
   Stornorechnung (montants négatifs, numéro propre, PDF archivé, référence
   « Storno zu Rechnung Nr. X ») et passe l'originale en `Cancelled`.
 - **Paiement** : `Issued → Paid` crée automatiquement la recette au journal (EÜR).
+  Une écriture générée par une facture ne se supprime pas à la main.
 - **Montants** en `decimal`, arrondi commercial `MidpointRounding.AwayFromZero`.
+
+## Export CSV (EÜR)
+`journal-{année}.csv` : séparateur `;`, virgule décimale, dates `TT.MM.JJJJ`, UTF-8 avec BOM
+— s'ouvre directement dans Excel en allemand. Les montants sont signés (dépenses négatives),
+donc une simple somme donne le résultat de l'exercice.
+Les champs texte sont échappés et les formules neutralisées (injection CSV).
 
 ## Base de données — migrations
 ```powershell
@@ -103,5 +112,5 @@ dotnet test tests/TreizeInvoice.Tests
 - [x] Bloc 2 — factures brouillon (lignes dynamiques, totaux live, duplication)
 - [x] Bloc 3 — émission + PDF allemand (numérotation atomique, verrouillage, archivage)
 - [x] Bloc 4 — paiement (recette au journal) + Storno
-- [ ] Bloc 5 — journal + export EÜR
+- [x] Bloc 5 — journal recettes/dépenses + export CSV (EÜR)
 - [ ] Bloc 6 — tableau de bord + finitions
