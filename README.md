@@ -69,6 +69,7 @@ Le mot de passe se change ensuite à tout moment depuis **Paramètres**.
 - `/app/factures/{id}/pdf` — PDF archivé d'une facture émise
 - `/app/journal` — journal recettes/dépenses
 - `/app/journal/export?year=2026` — export CSV de l'année
+- `/app/sauvegarde` — ZIP horodaté (base + PDF archivés)
 - `/app/parametres` — informations d'entreprise + changement de mot de passe
 
 ## Conformité (règles implémentées)
@@ -94,6 +95,13 @@ Le mot de passe se change ensuite à tout moment depuis **Paramètres**.
 donc une simple somme donne le résultat de l'exercice.
 Les champs texte sont échappés et les formules neutralisées (injection CSV).
 
+## Sauvegarde
+Le bouton « Sauvegarder maintenant » du tableau de bord télécharge un ZIP horodaté
+contenant la base et tous les PDF archivés. L'instantané de la base est pris avec
+`VACUUM INTO` : en mode WAL, copier le fichier `.db` seul laisserait de côté les
+écritures encore en journal.
+Conservez ces archives **hors de la machine** (les obligations GoBD portent sur 10 ans).
+
 ## Base de données — migrations
 ```powershell
 cd backend
@@ -113,4 +121,5 @@ dotnet test tests/TreizeInvoice.Tests
 - [x] Bloc 3 — émission + PDF allemand (numérotation atomique, verrouillage, archivage)
 - [x] Bloc 4 — paiement (recette au journal) + Storno
 - [x] Bloc 5 — journal recettes/dépenses + export CSV (EÜR)
-- [ ] Bloc 6 — tableau de bord + finitions
+- [x] Bloc 6 — tableau de bord + sauvegarde manuelle
+  (hébergement de la landing page : à arbitrer)

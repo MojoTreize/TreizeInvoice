@@ -65,6 +65,7 @@ public class AppDbContext : DbContext
                 .HasForeignKey(i => i.CancelsInvoiceId)
                 .OnDelete(DeleteBehavior.Restrict);
             e.Ignore(i => i.Total);
+            e.Ignore(i => i.DueDate);
         });
 
         modelBuilder.Entity<InvoiceItem>(e =>

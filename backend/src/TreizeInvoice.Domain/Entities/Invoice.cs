@@ -54,4 +54,13 @@ public class Invoice
 
     /// <summary>Total de la facture (somme des lignes).</summary>
     public decimal Total => Items.Sum(i => i.LineTotal);
+
+    /// <summary>Échéance de paiement (date de facture + délai convenu).</summary>
+    public DateOnly DueDate => InvoiceDate.AddDays(PaymentTermDays);
+
+    /// <summary>Nombre de jours de retard à la date donnée ; 0 si la facture n'est pas en retard.</summary>
+    public int DaysOverdue(DateOnly today) =>
+        Status == InvoiceStatus.Issued && today > DueDate
+            ? today.DayNumber - DueDate.DayNumber
+            : 0;
 }

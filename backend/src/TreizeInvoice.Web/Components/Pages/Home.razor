@@ -1,16 +1,150 @@
 ﻿@page "/"
 @page "/app"
 @attribute [Authorize]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject IDashboardService Dashboard
 
 <PageTitle>Tableau de bord — TreizeInvoice</PageTitle>
 
-<h1>Tableau de bord</h1>
-
-<p class="lead">Bienvenue sur TreizeInvoice.</p>
-
-<div class="alert alert-info" role="alert">
-    Le tableau de bord (chiffre d'affaires, factures impayées, dernières factures)
-    sera complété au Bloc 6. Pour l'instant, commencez par renseigner vos
-    <a href="/app/parametres">informations d'entreprise</a>.
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Tableau de bord @_year</h1>
+    <a class="btn btn-outline-secondary" href="/app/sauvegarde">Sauvegarder maintenant</a>
 </div>
+
+@if (_summary is null)
+{
+    <p>Chargement…</p>
+}
+else
+{
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card p-3">
+                <div class="text-muted small">Chiffre d'affaires facturé</div>
+                <div class="fs-4">@_summary.Invoiced.ToString("N2") €</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3">
+                <div class="text-muted small">Encaissé</div>
+                <div class="fs-4 text-success">@_summary.Collected.ToString("N2") €</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3">
+                <div class="text-muted small">Dépenses</div>
+                <div class="fs-4">@_summary.Expenses.ToString("N2") €</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3">
+                <div class="text-muted small">En attente de paiement</div>
+                <div class="fs-4 @(_summary.Unpaid.Any(i => i.DaysOverdue(_today) > 0) ? "text-danger" : "")">
+                    @_summary.UnpaidTotal.ToString("N2") €
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h2 class="h5">Factures impayées</h2>
+    @if (_summary.Unpaid.Count == 0)
+    {
+        <div class="alert alert-success">Aucune facture en attente. Tout est encaissé.</div>
+    }
+    else
+    {
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Numéro</th>
+                    <th>Client</th>
+                    <th>Échéance</th>
+                    <th>Retard</th>
+                    <th class="text-end">Montant</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var inv in _summary.Unpaid)
+                {
+                    var late = inv.DaysOverdue(_today);
+                    <tr class="@(late > 0 ? "table-danger" : "")">
+                        <td>@inv.InvoiceNumber</td>
+                        <td>@inv.Client?.Name</td>
+                        <td>@inv.DueDate.ToString("dd.MM.yyyy")</td>
+                        <td>
+                            @if (late > 0)
+                            {
+                                <span class="badge bg-danger">@late jour@(late > 1 ? "s" : "") de retard</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">dans les délais</span>
+                            }
+                        </td>
+                        <td class="text-end">@inv.Total.ToString("N2") €</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <h2 class="h5 mt-4">Dernières factures</h2>
+    @if (_summary.Recent.Count == 0)
+    {
+        <div class="alert alert-secondary">Aucune facture pour l'instant.</div>
+    }
+    else
+    {
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Numéro</th>
+                    <th>Client</th>
+                    <th>Date</th>
+                    <th>Statut</th>
+                    <th class="text-end">Montant</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var inv in _summary.Recent)
+                {
+                    <tr>
+                        <td>@(inv.InvoiceNumber ?? "—")</td>
+                        <td>@inv.Client?.Name</td>
+                        <td>@inv.InvoiceDate.ToString("dd.MM.yyyy")</td>
+                        <td><span class="badge @StatusClass(inv.Status)">@StatusLabel(inv.Status)</span></td>
+                        <td class="text-end">@inv.Total.ToString("N2") €</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private DashboardSummary? _summary;
+    private readonly DateOnly _today = DateOnly.FromDateTime(DateTime.Today);
+    private readonly int _year = DateTime.Today.Year;
+
+    protected override async Task OnInitializedAsync() =>
+        _summary = await Dashboard.GetAsync(_year, _today);
+
+    private static string StatusLabel(InvoiceStatus s) => s switch
+    {
+        InvoiceStatus.Draft => "Brouillon",
+        InvoiceStatus.Issued => "Émise",
+        InvoiceStatus.Paid => "Payée",
+        InvoiceStatus.Cancelled => "Annulée",
+        _ => s.ToString()
+    };
+
+    private static string StatusClass(InvoiceStatus s) => s switch
+    {
+        InvoiceStatus.Draft => "bg-secondary",
+        InvoiceStatus.Issued => "bg-primary",
+        InvoiceStatus.Paid => "bg-success",
+        InvoiceStatus.Cancelled => "bg-dark",
+        _ => "bg-secondary"
+    };
+}
 

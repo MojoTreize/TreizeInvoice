@@ -4,7 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using TreizeInvoice.Data;
 using TreizeInvoice.Services.Auditing;
 using TreizeInvoice.Services.Auth;
+using TreizeInvoice.Services.Backup;
 using TreizeInvoice.Services.Clients;
+using TreizeInvoice.Services.Dashboard;
 using TreizeInvoice.Services.Invoicing;
 using TreizeInvoice.Services.Journal;
 using TreizeInvoice.Services.Pdf;
@@ -31,6 +33,9 @@ builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IInvoiceTotalsCalculator, KleinunternehmerTotalsCalculator>();
 builder.Services.AddScoped<IInvoiceNumberGenerator, InvoiceNumberGenerator>();
 builder.Services.AddScoped<IJournalService, JournalService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddSingleton(new BackupPaths(dbPath, Path.Combine(dataDir, "archive")));
+builder.Services.AddScoped<IBackupService, BackupService>();
 
 // Logo monochrome de la landing page, réutilisé en en-tête des PDF.
 var logoPath = Path.GetFullPath(Path.Combine(
@@ -109,6 +114,12 @@ app.MapGet("/app/journal/export", async (int year, IJournalService journal) =>
 {
     var csv = await journal.ExportCsvAsync(year);
     return Results.File(csv, "text/csv", $"journal-{year}.csv");
+}).RequireAuthorization();
+
+app.MapGet("/app/sauvegarde", async (IBackupService backup) =>
+{
+    var archive = await backup.CreateAsync();
+    return Results.File(archive.Content, "application/zip", archive.FileName);
 }).RequireAuthorization();
 
 app.MapRazorComponents<App>()
