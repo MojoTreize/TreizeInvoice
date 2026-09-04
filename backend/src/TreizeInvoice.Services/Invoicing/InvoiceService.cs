@@ -36,6 +36,7 @@ public class InvoiceService : IInvoiceService
             .IgnoreQueryFilters() // les factures des clients supprimés restent visibles (GoBD)
             .Include(i => i.Client)
             .Include(i => i.Items)
+            .Include(i => i.CancelsInvoice)
             .OrderByDescending(i => i.InvoiceDate)
             .ThenByDescending(i => i.Id)
             .ToListAsync();
@@ -138,25 +139,14 @@ public class InvoiceService : IInvoiceService
         EnsureDraft(invoice);
         EnsureIssuable(invoice);
 
-        var profile = await _db.BusinessProfiles.FirstOrDefaultAsync()
-            ?? throw new DomainException("Renseignez d'abord vos informations d'entreprise dans Paramètres.");
-        EnsureProfileComplete(profile);
-
-        var year = invoice.InvoiceDate.Year;
+        var profile = await LoadProfileAsync();
 
         // Numéro et verrouillage dans une seule transaction : si quoi que ce soit
         // échoue, le compteur n'est pas consommé et la séquence reste sans trou.
         await using var transaction = await _db.Database.BeginTransactionAsync();
         try
         {
-            invoice.InvoiceNumber = await _numbers.NextAsync(year, profile.NumberFormat);
-            invoice.Status = InvoiceStatus.Issued;
-            invoice.IssuedAtUtc = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
-
-            var pdf = _renderer.Render(invoice, profile);
-            invoice.PdfPath = _archive.Store(year, invoice.InvoiceNumber, pdf);
-            await _db.SaveChangesAsync();
+            await IssueCoreAsync(invoice, profile);
 
             await _audit.LogAsync(nameof(Invoice), invoice.Id, "Issued",
                 new { invoice.InvoiceNumber, Total = invoice.Total, invoice.PdfPath });
@@ -170,6 +160,145 @@ public class InvoiceService : IInvoiceService
         }
 
         return invoice;
+    }
+
+    public async Task MarkAsPaidAsync(int id, DateOnly? paidOn = null)
+    {
+        var invoice = await _db.Invoices
+            .IgnoreQueryFilters()
+            .Include(i => i.Items)
+            .Include(i => i.Client)
+            .FirstOrDefaultAsync(i => i.Id == id)
+            ?? throw new DomainException("Facture introuvable.");
+
+        if (invoice.Status != InvoiceStatus.Issued)
+            throw new DomainException(
+                "Seule une facture émise peut être marquée comme payée.");
+
+        if (invoice.CancelsInvoiceId is not null)
+            throw new DomainException(
+                "Une facture d'annulation ne s'encaisse pas : elle neutralise la facture d'origine.");
+
+        invoice.Status = InvoiceStatus.Paid;
+        invoice.PaidAtUtc = DateTime.UtcNow;
+
+        // La recette alimente automatiquement le journal (base de l'EÜR).
+        _db.JournalEntries.Add(new JournalEntry
+        {
+            Date = paidOn ?? DateOnly.FromDateTime(DateTime.Today),
+            Type = JournalEntryType.Recette,
+            Amount = invoice.Total,
+            Description = $"Facture {invoice.InvoiceNumber} — {invoice.Client.Name}",
+            Category = "Umsatz",
+            InvoiceId = invoice.Id
+        });
+
+        await _db.SaveChangesAsync();
+        await _audit.LogAsync(nameof(Invoice), invoice.Id, "Paid",
+            new { invoice.InvoiceNumber, Total = invoice.Total });
+    }
+
+    public async Task<Invoice> CancelAsync(int id)
+    {
+        var original = await _db.Invoices
+            .IgnoreQueryFilters()
+            .Include(i => i.Items)
+            .Include(i => i.Client)
+            .FirstOrDefaultAsync(i => i.Id == id)
+            ?? throw new DomainException("Facture introuvable.");
+
+        if (original.Status == InvoiceStatus.Draft)
+            throw new DomainException(
+                "Un brouillon n'a pas de valeur légale : supprimez-le au lieu de l'annuler.");
+
+        if (original.Status == InvoiceStatus.Cancelled)
+            throw new DomainException(
+                $"La facture {original.InvoiceNumber} est déjà annulée.");
+
+        if (original.Status == InvoiceStatus.Paid)
+            throw new DomainException(
+                $"La facture {original.InvoiceNumber} est déjà encaissée. " +
+                "Contactez votre conseiller fiscal avant de l'annuler.");
+
+        // Sans ce garde-fou, on pourrait enchainer des storno de storno à l'infini.
+        if (original.CancelsInvoiceId is not null)
+            throw new DomainException(
+                $"La facture {original.InvoiceNumber} est elle-même une facture d'annulation.");
+
+        var profile = await LoadProfileAsync();
+
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        try
+        {
+            // La correction d'une facture émise passe obligatoirement par une
+            // Stornorechnung : montants négatifs, numéro propre dans la séquence.
+            var storno = new Invoice
+            {
+                ClientId = original.ClientId,
+                Client = original.Client,
+                InvoiceDate = DateOnly.FromDateTime(DateTime.Today),
+                ServiceDate = original.ServiceDate,
+                ServicePeriod = original.ServicePeriod,
+                PaymentTermDays = original.PaymentTermDays,
+                CancelsInvoiceId = original.Id,
+                CancelsInvoice = original,
+                Status = InvoiceStatus.Draft,
+                CreatedAtUtc = DateTime.UtcNow,
+                Items = original.Items
+                    .Select(it => new InvoiceItem
+                    {
+                        Description = it.Description,
+                        Quantity = -it.Quantity,
+                        UnitPrice = it.UnitPrice
+                    })
+                    .ToList()
+            };
+
+            _db.Invoices.Add(storno);
+            await _db.SaveChangesAsync();
+
+            await IssueCoreAsync(storno, profile);
+
+            original.Status = InvoiceStatus.Cancelled;
+            original.CancelledByInvoiceId = storno.Id;
+            await _db.SaveChangesAsync();
+
+            await _audit.LogAsync(nameof(Invoice), original.Id, "Cancelled",
+                new { original.InvoiceNumber, StornoNumber = storno.InvoiceNumber });
+            await _audit.LogAsync(nameof(Invoice), storno.Id, "StornoIssued",
+                new { storno.InvoiceNumber, CancelsNumber = original.InvoiceNumber });
+
+            await transaction.CommitAsync();
+            return storno;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    /// <summary>Attribution du numéro, verrouillage et archivage du PDF. À appeler dans une transaction.</summary>
+    private async Task IssueCoreAsync(Invoice invoice, BusinessProfile profile)
+    {
+        var year = invoice.InvoiceDate.Year;
+
+        invoice.InvoiceNumber = await _numbers.NextAsync(year, profile.NumberFormat);
+        invoice.Status = InvoiceStatus.Issued;
+        invoice.IssuedAtUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        var pdf = _renderer.Render(invoice, profile);
+        invoice.PdfPath = _archive.Store(year, invoice.InvoiceNumber, pdf);
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task<BusinessProfile> LoadProfileAsync()
+    {
+        var profile = await _db.BusinessProfiles.FirstOrDefaultAsync()
+            ?? throw new DomainException("Renseignez d'abord vos informations d'entreprise dans Paramètres.");
+        EnsureProfileComplete(profile);
+        return profile;
     }
 
     public async Task<(byte[] Content, string FileName)?> GetArchivedPdfAsync(int id)

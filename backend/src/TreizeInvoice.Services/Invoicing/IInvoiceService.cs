@@ -27,6 +27,15 @@ public interface IInvoiceService
     /// </summary>
     Task<Invoice> IssueAsync(int id);
 
+    /// <summary>Marque une facture émise comme payée et crée la recette au journal.</summary>
+    Task MarkAsPaidAsync(int id, DateOnly? paidOn = null);
+
+    /// <summary>
+    /// Annule une facture émise en générant une Stornorechnung (montants négatifs,
+    /// numéro propre, PDF archivé). Retourne la facture d'annulation créée.
+    /// </summary>
+    Task<Invoice> CancelAsync(int id);
+
     /// <summary>Relit le PDF archivé d'une facture émise. Le fichier n'est jamais régénéré.</summary>
     Task<(byte[] Content, string FileName)?> GetArchivedPdfAsync(int id);
 }

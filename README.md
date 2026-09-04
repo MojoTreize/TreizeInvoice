@@ -79,6 +79,10 @@ Le mot de passe se change ensuite à tout moment depuis **Paramètres**.
   en `FileMode.CreateNew` (jamais écrasé). Le téléchargement ressert toujours ce fichier.
 - **Mentions §14 UStG** sur le PDF, et « Gemäß § 19 UStG wird keine Umsatzsteuer
   berechnet. » si Kleinunternehmer.
+- **Correction = Storno** : une facture émise ne se modifie pas. L'annulation crée une
+  Stornorechnung (montants négatifs, numéro propre, PDF archivé, référence
+  « Storno zu Rechnung Nr. X ») et passe l'originale en `Cancelled`.
+- **Paiement** : `Issued → Paid` crée automatiquement la recette au journal (EÜR).
 - **Montants** en `decimal`, arrondi commercial `MidpointRounding.AwayFromZero`.
 
 ## Base de données — migrations
@@ -98,6 +102,6 @@ dotnet test tests/TreizeInvoice.Tests
 - [x] Bloc 1 — clients (liste + recherche, création, édition, soft delete)
 - [x] Bloc 2 — factures brouillon (lignes dynamiques, totaux live, duplication)
 - [x] Bloc 3 — émission + PDF allemand (numérotation atomique, verrouillage, archivage)
-- [ ] Bloc 4 — paiement + storno
+- [x] Bloc 4 — paiement (recette au journal) + Storno
 - [ ] Bloc 5 — journal + export EÜR
 - [ ] Bloc 6 — tableau de bord + finitions
