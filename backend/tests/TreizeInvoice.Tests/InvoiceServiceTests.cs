@@ -3,13 +3,18 @@ using TreizeInvoice.Domain.Enums;
 using TreizeInvoice.Domain.Exceptions;
 using TreizeInvoice.Services.Auditing;
 using TreizeInvoice.Services.Invoicing;
+using TreizeInvoice.Services.Pdf;
 
 namespace TreizeInvoice.Tests;
 
 public class InvoiceServiceTests
 {
     private static InvoiceService CreateService(TestDb db) =>
-        new(db.Context, new AuditService(db.Context));
+        new(db.Context,
+            new AuditService(db.Context),
+            new InvoiceNumberGenerator(db.Context),
+            new QuestPdfInvoiceRenderer(new KleinunternehmerTotalsCalculator(), new PdfAssets(null)),
+            new FileSystemInvoiceArchive(db.ArchiveRoot));
 
     private static Client SeedClient(TestDb db)
     {

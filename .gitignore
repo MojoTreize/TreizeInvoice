@@ -4,5 +4,8 @@ obj/
 *.user
 # Données locales (SQLite + PDF archivés)
 backend/data/
+*.db
+*.db-shm
+*.db-wal
 # Divers
 .DS_Store

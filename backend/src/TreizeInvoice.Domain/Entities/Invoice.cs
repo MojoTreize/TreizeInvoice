@@ -43,6 +43,7 @@ public class Invoice
 
     /// <summary>Si cette facture est un storno : la facture qu'elle annule.</summary>
     public int? CancelsInvoiceId { get; set; }
+    public Invoice? CancelsInvoice { get; set; }
 
     /// <summary>Si cette facture a été annulée : le storno qui l'annule.</summary>
     public int? CancelledByInvoiceId { get; set; }

@@ -4,6 +4,7 @@ using TreizeInvoice.Domain.Entities;
 using TreizeInvoice.Domain.Enums;
 using TreizeInvoice.Domain.Exceptions;
 using TreizeInvoice.Services.Auditing;
+using TreizeInvoice.Services.Pdf;
 
 namespace TreizeInvoice.Services.Invoicing;
 
@@ -11,11 +12,22 @@ public class InvoiceService : IInvoiceService
 {
     private readonly AppDbContext _db;
     private readonly IAuditService _audit;
+    private readonly IInvoiceNumberGenerator _numbers;
+    private readonly IInvoicePdfRenderer _renderer;
+    private readonly IInvoiceArchive _archive;
 
-    public InvoiceService(AppDbContext db, IAuditService audit)
+    public InvoiceService(
+        AppDbContext db,
+        IAuditService audit,
+        IInvoiceNumberGenerator numbers,
+        IInvoicePdfRenderer renderer,
+        IInvoiceArchive archive)
     {
         _db = db;
         _audit = audit;
+        _numbers = numbers;
+        _renderer = renderer;
+        _archive = archive;
     }
 
     public async Task<List<Invoice>> GetAllAsync() =>
@@ -33,6 +45,7 @@ public class InvoiceService : IInvoiceService
             .IgnoreQueryFilters()
             .Include(i => i.Client)
             .Include(i => i.Items)
+            .Include(i => i.CancelsInvoice)
             .FirstOrDefaultAsync(i => i.Id == id);
 
     public async Task<Invoice> CreateDraftAsync(Invoice draft)
@@ -111,6 +124,95 @@ public class InvoiceService : IInvoiceService
         };
 
         return await CreateDraftAsync(copy);
+    }
+
+    public async Task<Invoice> IssueAsync(int id)
+    {
+        var invoice = await _db.Invoices
+            .Include(i => i.Items)
+            .Include(i => i.Client)
+            .Include(i => i.CancelsInvoice)
+            .FirstOrDefaultAsync(i => i.Id == id)
+            ?? throw new DomainException("Facture introuvable.");
+
+        EnsureDraft(invoice);
+        EnsureIssuable(invoice);
+
+        var profile = await _db.BusinessProfiles.FirstOrDefaultAsync()
+            ?? throw new DomainException("Renseignez d'abord vos informations d'entreprise dans Paramètres.");
+        EnsureProfileComplete(profile);
+
+        var year = invoice.InvoiceDate.Year;
+
+        // Numéro et verrouillage dans une seule transaction : si quoi que ce soit
+        // échoue, le compteur n'est pas consommé et la séquence reste sans trou.
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        try
+        {
+            invoice.InvoiceNumber = await _numbers.NextAsync(year, profile.NumberFormat);
+            invoice.Status = InvoiceStatus.Issued;
+            invoice.IssuedAtUtc = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            var pdf = _renderer.Render(invoice, profile);
+            invoice.PdfPath = _archive.Store(year, invoice.InvoiceNumber, pdf);
+            await _db.SaveChangesAsync();
+
+            await _audit.LogAsync(nameof(Invoice), invoice.Id, "Issued",
+                new { invoice.InvoiceNumber, Total = invoice.Total, invoice.PdfPath });
+
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+
+        return invoice;
+    }
+
+    public async Task<(byte[] Content, string FileName)?> GetArchivedPdfAsync(int id)
+    {
+        var invoice = await _db.Invoices.AsNoTracking().IgnoreQueryFilters()
+            .FirstOrDefaultAsync(i => i.Id == id);
+
+        if (invoice?.PdfPath is null) return null;
+
+        var content = _archive.Read(invoice.PdfPath);
+        return content is null ? null : (content, $"{invoice.InvoiceNumber}.pdf");
+    }
+
+    /// <summary>Contrôles métier avant émission : une facture émise ne peut plus être corrigée.</summary>
+    private static void EnsureIssuable(Invoice invoice)
+    {
+        if (invoice.ClientId == 0)
+            throw new DomainException("Un client est requis pour émettre la facture.");
+
+        if (invoice.Items.Count == 0)
+            throw new DomainException("La facture doit contenir au moins une ligne.");
+
+        if (invoice.Items.Any(i => string.IsNullOrWhiteSpace(i.Description)))
+            throw new DomainException("Chaque ligne doit avoir une description.");
+
+        // Les montants négatifs sont réservés aux factures d'annulation (Storno).
+        if (invoice.CancelsInvoiceId is null && invoice.Items.Any(i => i.Quantity <= 0 || i.UnitPrice <= 0))
+            throw new DomainException("Chaque ligne doit avoir une quantité et un prix unitaire supérieurs à 0.");
+    }
+
+    /// <summary>Mentions obligatoires §14 UStG côté émettrice.</summary>
+    private static void EnsureProfileComplete(BusinessProfile profile)
+    {
+        var missing = new List<string>();
+        if (string.IsNullOrWhiteSpace(profile.FullName)) missing.Add("nom");
+        if (string.IsNullOrWhiteSpace(profile.Address)) missing.Add("adresse");
+        if (string.IsNullOrWhiteSpace(profile.Steuernummer)) missing.Add("Steuernummer");
+        if (string.IsNullOrWhiteSpace(profile.Iban)) missing.Add("IBAN");
+
+        if (missing.Count > 0)
+            throw new DomainException(
+                "Informations d'entreprise incomplètes (" + string.Join(", ", missing) +
+                "). Complétez-les dans Paramètres avant d'émettre une facture.");
     }
 
     /// <summary>

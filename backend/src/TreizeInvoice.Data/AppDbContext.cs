@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
+    public DbSet<InvoiceNumberSequence> InvoiceNumberSequences => Set<InvoiceNumberSequence>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -59,6 +60,10 @@ public class AppDbContext : DbContext
                 .WithOne(it => it.Invoice)
                 .HasForeignKey(it => it.InvoiceId)
                 .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(i => i.CancelsInvoice)
+                .WithMany()
+                .HasForeignKey(i => i.CancelsInvoiceId)
+                .OnDelete(DeleteBehavior.Restrict);
             e.Ignore(i => i.Total);
         });
 
@@ -74,6 +79,13 @@ public class AppDbContext : DbContext
         {
             e.Property(a => a.Entity).IsRequired().HasMaxLength(100);
             e.Property(a => a.Action).IsRequired().HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<InvoiceNumberSequence>(e =>
+        {
+            e.HasKey(s => s.Year);
+            // L'année est une donnée métier, pas une clé générée par la base.
+            e.Property(s => s.Year).ValueGeneratedNever();
         });
 
         modelBuilder.Entity<JournalEntry>(e =>

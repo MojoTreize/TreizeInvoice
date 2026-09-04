@@ -20,4 +20,13 @@ public interface IInvoiceService
 
     /// <summary>Duplique une facture existante en nouveau brouillon (sans numéro ni dates d'émission).</summary>
     Task<Invoice> DuplicateAsDraftAsync(int id);
+
+    /// <summary>
+    /// Émet la facture : attribue le numéro de façon atomique, verrouille la facture,
+    /// génère et archive le PDF allemand. Irréversible (GoBD).
+    /// </summary>
+    Task<Invoice> IssueAsync(int id);
+
+    /// <summary>Relit le PDF archivé d'une facture émise. Le fichier n'est jamais régénéré.</summary>
+    Task<(byte[] Content, string FileName)?> GetArchivedPdfAsync(int id);
 }

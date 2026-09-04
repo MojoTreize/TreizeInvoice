@@ -64,7 +64,22 @@ Le mot de passe se change ensuite à tout moment depuis **Paramètres**.
 - `/login` — connexion
 - `/register` — inscription (page « Beta » pour l'instant)
 - `/app` — tableau de bord (protégé)
+- `/app/clients` — clients
+- `/app/factures` — factures
+- `/app/factures/{id}/pdf` — PDF archivé d'une facture émise
 - `/app/parametres` — informations d'entreprise + changement de mot de passe
+
+## Conformité (règles implémentées)
+- **Numérotation** : attribuée uniquement à l'émission, séquence continue par année,
+  incrémentée dans une transaction (table `InvoiceNumberSequences`). Si l'émission
+  échoue, le compteur n'est pas consommé → aucun trou.
+- **Immutabilité GoBD** : une facture `Issued` ne peut plus être modifiée ni supprimée
+  (`InvoiceLockedException` côté service, pas seulement dans l'UI).
+- **Archivage** : le PDF est écrit dans `backend/data/archive/{année}/{numéro}.pdf`
+  en `FileMode.CreateNew` (jamais écrasé). Le téléchargement ressert toujours ce fichier.
+- **Mentions §14 UStG** sur le PDF, et « Gemäß § 19 UStG wird keine Umsatzsteuer
+  berechnet. » si Kleinunternehmer.
+- **Montants** en `decimal`, arrondi commercial `MidpointRounding.AwayFromZero`.
 
 ## Base de données — migrations
 ```powershell
@@ -82,7 +97,7 @@ dotnet test tests/TreizeInvoice.Tests
 - [x] Bloc 0 — squelette, auth mono-utilisateur, paramètres, migration initiale
 - [x] Bloc 1 — clients (liste + recherche, création, édition, soft delete)
 - [x] Bloc 2 — factures brouillon (lignes dynamiques, totaux live, duplication)
-- [ ] Bloc 3 — émission + PDF
+- [x] Bloc 3 — émission + PDF allemand (numérotation atomique, verrouillage, archivage)
 - [ ] Bloc 4 — paiement + storno
 - [ ] Bloc 5 — journal + export EÜR
 - [ ] Bloc 6 — tableau de bord + finitions

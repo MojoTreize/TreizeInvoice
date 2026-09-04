@@ -16,6 +16,11 @@
     <div class="alert alert-danger">@_error</div>
 }
 
+@if (_success is not null)
+{
+    <div class="alert alert-success">@_success</div>
+}
+
 @if (_invoices is null)
 {
     <p>Chargement…</p>
@@ -50,7 +55,12 @@ else
                         @if (inv.Status == InvoiceStatus.Draft)
                         {
                             <a class="btn btn-sm btn-outline-primary" href="@($"/app/factures/{inv.Id}")">Modifier</a>
+                            <button class="btn btn-sm btn-success" @onclick="() => _pendingIssue = inv">Émettre</button>
                             <button class="btn btn-sm btn-outline-danger" @onclick="() => _pendingDelete = inv">Supprimer</button>
+                        }
+                        else
+                        {
+                            <a class="btn btn-sm btn-outline-secondary" href="@($"/app/factures/{inv.Id}/pdf")" target="_blank">PDF</a>
                         }
                         <button class="btn btn-sm btn-outline-secondary" @onclick="() => DuplicateAsync(inv.Id)">Dupliquer</button>
                     </td>
@@ -58,6 +68,22 @@ else
             }
         </tbody>
     </table>
+}
+
+@if (_pendingIssue is not null)
+{
+    <div class="alert alert-warning">
+        <p class="mb-2">
+            <strong>Émettre définitivement cette facture ?</strong><br />
+            Un numéro lui sera attribué et le PDF sera archivé. Conformément aux principes
+            GoBD, elle ne pourra plus être modifiée ni supprimée : seule une facture
+            d'annulation (Storno) permettra de la corriger.
+        </p>
+        <button class="btn btn-sm btn-success" @onclick="ConfirmIssueAsync" disabled="@_issuing">
+            @(_issuing ? "Émission…" : "Émettre")
+        </button>
+        <button class="btn btn-sm btn-secondary" @onclick="() => _pendingIssue = null">Annuler</button>
+    </div>
 }
 
 @if (_pendingDelete is not null)
@@ -72,11 +98,38 @@ else
 @code {
     private List<Invoice>? _invoices;
     private Invoice? _pendingDelete;
+    private Invoice? _pendingIssue;
+    private bool _issuing;
     private string? _error;
+    private string? _success;
 
     protected override async Task OnInitializedAsync() => await Load();
 
     private async Task Load() => _invoices = await InvoiceService.GetAllAsync();
+
+    private async Task ConfirmIssueAsync()
+    {
+        if (_pendingIssue is null) return;
+
+        _error = null;
+        _success = null;
+        _issuing = true;
+        try
+        {
+            var issued = await InvoiceService.IssueAsync(_pendingIssue.Id);
+            _success = $"Facture {issued.InvoiceNumber} émise et archivée.";
+        }
+        catch (DomainException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _issuing = false;
+            _pendingIssue = null;
+            await Load();
+        }
+    }
 
     private async Task DuplicateAsync(int id)
     {

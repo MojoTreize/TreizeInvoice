@@ -6,6 +6,7 @@ using TreizeInvoice.Services.Auditing;
 using TreizeInvoice.Services.Auth;
 using TreizeInvoice.Services.Clients;
 using TreizeInvoice.Services.Invoicing;
+using TreizeInvoice.Services.Pdf;
 using TreizeInvoice.Services.Security;
 using TreizeInvoice.Services.Settings;
 using TreizeInvoice.Services.Setup;
@@ -27,6 +28,15 @@ builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IInvoiceTotalsCalculator, KleinunternehmerTotalsCalculator>();
+builder.Services.AddScoped<IInvoiceNumberGenerator, InvoiceNumberGenerator>();
+
+// Logo monochrome de la landing page, réutilisé en en-tête des PDF.
+var logoPath = Path.GetFullPath(Path.Combine(
+    builder.Environment.ContentRootPath, "..", "..", "..", "frontend", "assets", "treizeinvoice-mark-mono.svg"));
+builder.Services.AddSingleton(new PdfAssets(logoPath));
+builder.Services.AddScoped<IInvoicePdfRenderer, QuestPdfInvoiceRenderer>();
+builder.Services.AddSingleton<IInvoiceArchive>(
+    new FileSystemInvoiceArchive(Path.Combine(dataDir, "archive")));
 builder.Services.AddScoped<DatabaseInitializer>();
 
 // --- Authentification par cookie (mono-utilisateur) ---
@@ -83,6 +93,15 @@ app.MapPost("/auth/logout", async (HttpContext ctx) =>
     await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     return Results.Redirect("/login");
 }).DisableAntiforgery();
+
+// Sert toujours le PDF archivé à l'émission, jamais une régénération (GoBD).
+app.MapGet("/app/factures/{id:int}/pdf", async (int id, IInvoiceService invoices) =>
+{
+    var pdf = await invoices.GetArchivedPdfAsync(id);
+    return pdf is null
+        ? Results.NotFound()
+        : Results.File(pdf.Value.Content, "application/pdf", pdf.Value.FileName);
+}).RequireAuthorization();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
