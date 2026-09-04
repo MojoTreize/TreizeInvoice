@@ -459,6 +459,46 @@
   .legende span{font-size:.84rem; color:var(--ink-soft);}
   .legende .mark{margin-top:3px;}
 
+  /* ---------- Ce que l'outil ne fait pas ---------- */
+  .grenzen-grid{
+    margin-top:38px;
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:26px 40px;
+  }
+  .grenzen-block h3{
+    font-size:1rem;
+    letter-spacing:.02em;
+    text-transform:uppercase;
+    padding-bottom:8px;
+    border-bottom:2px solid var(--ink);
+  }
+  .grenzen-list{list-style:none; margin:0; padding:0;}
+  .grenzen-list li{
+    padding:13px 0 13px 26px;
+    border-bottom:1px solid var(--line);
+    position:relative;
+  }
+  .grenzen-list li:last-child{border-bottom:none;}
+  .grenzen-list li::before{
+    position:absolute;
+    left:0; top:14px;
+    font-weight:700;
+    line-height:1;
+  }
+  .grenzen-list.soon li::before{content:"→"; color:var(--blue);}
+  .grenzen-list.never li::before{content:"×"; color:var(--wood); font-size:1.15em; top:12px;}
+  .grenzen-list b{display:block; font-size:.98rem;}
+  .grenzen-list span{font-size:.88rem; color:var(--ink-soft);}
+  .grenzen-note{
+    margin-top:30px;
+    padding:14px 18px;
+    background:var(--sage);
+    border-left:3px solid #7E9C71;
+    font-size:.92rem;
+    max-width:70ch;
+  }
+
 
   /* ---------- Animations ---------- */
   @media (prefers-reduced-motion: no-preference){
@@ -534,6 +574,7 @@
     .beleg-head{flex-direction:column; gap:10px;}
     .shot{box-shadow:5px 5px 0 rgba(31,46,69,.18);}
     .trustbar ul{gap:8px 20px; font-size:.8rem;}
+    .grenzen-grid{grid-template-columns:1fr; gap:24px;}
   }
 </style>
 </head>
@@ -864,6 +905,46 @@
   </div>
 </section>
 
+<section id="grenzen">
+  <div class="wrap">
+    <div class="kicker">Ehrlich gesagt</div>
+    <h2>Was TreizeInvoice nicht kann.</h2>
+    <p class="section-lead">
+      Vergleichslisten zählen gern alles auf, was ein Programm beherrscht. Hier steht
+      das Gegenteil — damit Sie in fünf Minuten wissen, ob das Werkzeug zu Ihnen passt,
+      statt es nach zwei Wochen zu merken.
+    </p>
+
+    <div class="grenzen-grid">
+      <div class="grenzen-block">
+        <h3>Kommt noch</h3>
+        <ul class="grenzen-list soon">
+          <li><b>Angebote</b><span>Heute schreiben Sie Rechnungen. Der Weg vom Angebot zur Rechnung ist der nächste Schritt.</span></li>
+          <li><b>Mahnungen</b><span>Offene Posten sehen Sie bereits samt Verzugstagen. Das Mahnschreiben selbst fehlt noch.</span></li>
+          <li><b>E-Rechnung (XRechnung, ZUGFeRD)</b><span>Die strukturierten Formate sind eingeplant. Wir verfolgen die Gesetzeslage genau.</span></li>
+          <li><b>Wiederkehrende Rechnungen</b><span>Bis dahin duplizieren Sie die letzte mit einem Klick.</span></li>
+        </ul>
+      </div>
+
+      <div class="grenzen-block">
+        <h3>Bewusst nicht</h3>
+        <ul class="grenzen-list never">
+          <li><b>Umsatzsteuer-Verwaltung</b><span>TreizeInvoice ist für die Kleinunternehmerregelung nach § 19 UStG gebaut. Wer Umsatzsteuer ausweist und Vorsteuer zieht, braucht ein anderes Programm.</span></li>
+          <li><b>Schnittstellen zu Shops, CRM und Inkasso</b><span>Jede Schnittstelle ist eine Abhängigkeit mehr. Ihre Daten gehen als PDF und CSV raus — das reicht für die Steuerberatung.</span></li>
+          <li><b>Fremdwährungen</b><span>Rechnungen in Euro, nach deutschem Recht. Ein Werkzeug, das alles kann, kann nichts richtig.</span></li>
+          <li><b>Team-Zugänge</b><span>Ein Betrieb, eine Person, ein Zugang. Das hält die Nachvollziehbarkeit einfach.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="grenzen-note">
+      Dafür erzeugt TreizeInvoice Ihre <a href="#konformitaet">Verfahrensdokumentation</a> auf
+      Knopfdruck — das Papier, nach dem die Betriebsprüfung fragt und das sonst niemand
+      automatisch erstellt.
+    </p>
+  </div>
+</section>
+
 <section id="preis">
   <div class="wrap">
     <div class="kicker">Preis</div>
@@ -940,6 +1021,7 @@
     '.steps .step',
     '.conf .conf-item',
     '.legende li',
+    '.grenzen-list li',
     '.wen-grid > *',
     '.price-card',
     '.faq details',
