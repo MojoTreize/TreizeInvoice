@@ -1,0 +1,30 @@
+﻿@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <AuthorizeView>
+                <Authorized>
+                    <span class="me-3 text-muted">@context.User.Identity?.Name</span>
+                    <form method="post" action="/auth/logout">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">Déconnexion</button>
+                    </form>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+<div id="blazor-error-ui">
+    Une erreur inattendue est survenue.
+    <a href="" class="reload">Recharger</a>
+    <a class="dismiss">🗙</a>
+</div>

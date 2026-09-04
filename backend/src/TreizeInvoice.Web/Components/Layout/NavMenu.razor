@@ -1,0 +1,42 @@
+﻿<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/app">TreizeInvoice</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/app" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Tableau de bord
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/app/clients">
+                <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Clients
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/app/factures">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Factures
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/app/journal">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Journal
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/app/parametres">
+                <span class="bi bi-gear-fill-nav-menu" aria-hidden="true"></span> Paramètres
+            </NavLink>
+        </div>
+    </nav>
+</div>
+

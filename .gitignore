@@ -1,0 +1,8 @@
+# .NET
+bin/
+obj/
+*.user
+# Données locales (SQLite + PDF archivés)
+backend/data/
+# Divers
+.DS_Store

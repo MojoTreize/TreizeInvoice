@@ -1,0 +1,84 @@
+@page "/login"
+@layout EmptyLayout
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@inject IAuthService AuthService
+@inject NavigationManager Nav
+
+<PageTitle>Connexion — TreizeInvoice</PageTitle>
+
+<h1 class="auth-title">TreizeInvoice</h1>
+<p class="auth-subtitle">Connexion à votre espace de facturation</p>
+
+<EditForm Model="Input" OnValidSubmit="LoginAsync" FormName="login" method="post">
+    <DataAnnotationsValidator />
+
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger" role="alert">@_error</div>
+    }
+
+    <div class="form-group">
+        <label for="username">Identifiant</label>
+        <InputText id="username" class="form-control" @bind-Value="Input.Username" autocomplete="username" />
+        <ValidationMessage For="() => Input.Username" />
+    </div>
+
+    <div class="form-group">
+        <label for="password">Mot de passe</label>
+        <InputText id="password" type="password" class="form-control" @bind-Value="Input.Password" autocomplete="current-password" />
+        <ValidationMessage For="() => Input.Password" />
+    </div>
+
+    <button type="submit" class="btn btn-primary w-100">Se connecter</button>
+</EditForm>
+
+<p class="auth-footer">
+    Pas encore de compte ? <a href="/register">Inscription</a>
+</p>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private LoginModel Input { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    private string? _error;
+
+    private async Task LoginAsync()
+    {
+        var user = await AuthService.ValidateCredentialsAsync(Input.Username, Input.Password);
+        if (user is null)
+        {
+            _error = "Identifiant ou mot de passe incorrect.";
+            return;
+        }
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Name, user.Username)
+        };
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(identity));
+
+        Nav.NavigateTo(string.IsNullOrWhiteSpace(ReturnUrl) ? "/app" : ReturnUrl);
+    }
+
+    public class LoginModel
+    {
+        [Required(ErrorMessage = "L'identifiant est requis.")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Le mot de passe est requis.")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

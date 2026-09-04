@@ -1,0 +1,185 @@
+@page "/app/parametres"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@inject IBusinessProfileService ProfileService
+@inject IAuthService AuthService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Paramètres — TreizeInvoice</PageTitle>
+
+<h1>Paramètres</h1>
+
+<h2 class="mt-4">Informations d'entreprise</h2>
+<p class="text-muted">Ces données figurent sur chaque facture (§14 UStG).</p>
+
+@if (_profile is null)
+{
+    <p>Chargement…</p>
+}
+else
+{
+    <EditForm Model="_profile" OnValidSubmit="SaveProfileAsync" FormName="profile">
+        <DataAnnotationsValidator />
+
+        @if (_profileSaved)
+        {
+            <div class="alert alert-success" role="alert">Informations enregistrées.</div>
+        }
+
+        <div class="row">
+            <div class="form-group col-md-6">
+                <label>Nom complet / raison sociale</label>
+                <InputText class="form-control" @bind-Value="_profile.FullName" />
+            </div>
+            <div class="form-group col-md-6">
+                <label>Email</label>
+                <InputText class="form-control" @bind-Value="_profile.Email" />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Adresse</label>
+            <InputTextArea class="form-control" rows="3" @bind-Value="_profile.Address" />
+        </div>
+
+        <div class="row">
+            <div class="form-group col-md-4">
+                <label>Téléphone</label>
+                <InputText class="form-control" @bind-Value="_profile.Phone" />
+            </div>
+            <div class="form-group col-md-4">
+                <label>Steuernummer</label>
+                <InputText class="form-control" @bind-Value="_profile.Steuernummer" />
+            </div>
+            <div class="form-group col-md-4">
+                <label>Format de numérotation</label>
+                <InputText class="form-control" @bind-Value="_profile.NumberFormat" />
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="form-group col-md-5">
+                <label>IBAN</label>
+                <InputText class="form-control" @bind-Value="_profile.Iban" />
+            </div>
+            <div class="form-group col-md-3">
+                <label>BIC</label>
+                <InputText class="form-control" @bind-Value="_profile.Bic" />
+            </div>
+            <div class="form-group col-md-4">
+                <label>Banque</label>
+                <InputText class="form-control" @bind-Value="_profile.BankName" />
+            </div>
+        </div>
+
+        <div class="form-check mb-3">
+            <InputCheckbox class="form-check-input" id="klein" @bind-Value="_profile.IsKleinunternehmer" />
+            <label class="form-check-label" for="klein">
+                Kleinunternehmer (§19 UStG — pas de TVA facturée)
+            </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </EditForm>
+}
+
+<hr class="my-4" />
+
+<h2>Changer le mot de passe</h2>
+
+<EditForm Model="_pwd" OnValidSubmit="ChangePasswordAsync" FormName="password">
+    <DataAnnotationsValidator />
+
+    @if (_pwdMessage is not null)
+    {
+        <div class="alert @(_pwdSuccess ? "alert-success" : "alert-danger")" role="alert">@_pwdMessage</div>
+    }
+
+    <div class="row">
+        <div class="form-group col-md-4">
+            <label>Mot de passe actuel</label>
+            <InputText type="password" class="form-control" @bind-Value="_pwd.Current" />
+            <ValidationMessage For="() => _pwd.Current" />
+        </div>
+        <div class="form-group col-md-4">
+            <label>Nouveau mot de passe</label>
+            <InputText type="password" class="form-control" @bind-Value="_pwd.New" />
+            <ValidationMessage For="() => _pwd.New" />
+        </div>
+        <div class="form-group col-md-4">
+            <label>Confirmer</label>
+            <InputText type="password" class="form-control" @bind-Value="_pwd.Confirm" />
+            <ValidationMessage For="() => _pwd.Confirm" />
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-outline-primary">Changer le mot de passe</button>
+</EditForm>
+
+@code {
+    private BusinessProfile? _profile;
+    private bool _profileSaved;
+
+    private readonly PasswordModel _pwd = new();
+    private string? _pwdMessage;
+    private bool _pwdSuccess;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _profile = await ProfileService.GetAsync();
+    }
+
+    private async Task SaveProfileAsync()
+    {
+        if (_profile is null) return;
+        await ProfileService.SaveAsync(_profile);
+        _profileSaved = true;
+    }
+
+    private async Task ChangePasswordAsync()
+    {
+        _pwdMessage = null;
+
+        if (_pwd.New != _pwd.Confirm)
+        {
+            _pwdSuccess = false;
+            _pwdMessage = "La confirmation ne correspond pas au nouveau mot de passe.";
+            return;
+        }
+
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var idValue = state.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(idValue, out var userId))
+        {
+            _pwdSuccess = false;
+            _pwdMessage = "Session invalide. Reconnectez-vous.";
+            return;
+        }
+
+        var ok = await AuthService.ChangePasswordAsync(userId, _pwd.Current, _pwd.New);
+        _pwdSuccess = ok;
+        _pwdMessage = ok
+            ? "Mot de passe modifié."
+            : "Le mot de passe actuel est incorrect.";
+
+        if (ok)
+        {
+            _pwd.Current = _pwd.New = _pwd.Confirm = string.Empty;
+        }
+    }
+
+    private class PasswordModel
+    {
+        [Required(ErrorMessage = "Requis.")]
+        public string Current { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Requis.")]
+        [MinLength(6, ErrorMessage = "6 caractères minimum.")]
+        public string New { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Requis.")]
+        public string Confirm { get; set; } = string.Empty;
+    }
+}

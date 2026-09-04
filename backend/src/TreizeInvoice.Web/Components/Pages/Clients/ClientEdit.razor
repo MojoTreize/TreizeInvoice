@@ -1,0 +1,95 @@
+@page "/app/clients/nouveau"
+@page "/app/clients/{Id:int}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IClientService ClientService
+@inject NavigationManager Nav
+
+<PageTitle>@(IsNew ? "Nouveau client" : "Modifier client") — TreizeInvoice</PageTitle>
+
+<h1>@(IsNew ? "Nouveau client" : "Modifier le client")</h1>
+
+@if (_client is null)
+{
+    <p>Chargement…</p>
+}
+else
+{
+    <EditForm Model="_client" OnValidSubmit="SaveAsync" FormName="client">
+        <DataAnnotationsValidator />
+
+        <div class="row">
+            <div class="form-group col-md-6">
+                <label>Nom / raison sociale *</label>
+                <InputText class="form-control" @bind-Value="_client.Name" />
+                <ValidationMessage For="() => _client.Name" />
+            </div>
+            <div class="form-group col-md-6">
+                <label>Personne de contact</label>
+                <InputText class="form-control" @bind-Value="_client.ContactPerson" />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Adresse</label>
+            <InputTextArea class="form-control" rows="3" @bind-Value="_client.Address" />
+        </div>
+
+        <div class="row">
+            <div class="form-group col-md-6">
+                <label>Email</label>
+                <InputText class="form-control" @bind-Value="_client.Email" />
+                <ValidationMessage For="() => _client.Email" />
+            </div>
+            <div class="form-group col-md-6">
+                <label>Téléphone</label>
+                <InputText class="form-control" @bind-Value="_client.Phone" />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Notes</label>
+            <InputTextArea class="form-control" rows="2" @bind-Value="_client.Notes" />
+        </div>
+
+        <div class="mt-3">
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <a class="btn btn-secondary" href="/app/clients">Annuler</a>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private Client? _client;
+    private bool IsNew => Id is null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsNew)
+        {
+            _client = new Client();
+        }
+        else
+        {
+            _client = await ClientService.GetAsync(Id!.Value);
+            if (_client is null)
+            {
+                Nav.NavigateTo("/app/clients");
+            }
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_client is null) return;
+
+        if (IsNew)
+            await ClientService.CreateAsync(_client);
+        else
+            await ClientService.UpdateAsync(_client);
+
+        Nav.NavigateTo("/app/clients");
+    }
+}

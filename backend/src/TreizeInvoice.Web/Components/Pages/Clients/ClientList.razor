@@ -1,0 +1,106 @@
+@page "/app/clients"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IClientService ClientService
+@inject NavigationManager Nav
+
+<PageTitle>Clients — TreizeInvoice</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Clients</h1>
+    <a class="btn btn-primary" href="/app/clients/nouveau">+ Nouveau client</a>
+</div>
+
+<div class="mb-3">
+    <input class="form-control" placeholder="Rechercher (nom, contact, email)…"
+           value="@_search" @oninput="OnSearchInput" />
+</div>
+
+@if (_clients is null)
+{
+    <p>Chargement…</p>
+}
+else if (_clients.Count == 0)
+{
+    <div class="alert alert-secondary">
+        Aucun client @(string.IsNullOrWhiteSpace(_search) ? "" : "pour cette recherche").
+    </div>
+}
+else
+{
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Nom</th>
+                <th>Contact</th>
+                <th>Email</th>
+                <th>Téléphone</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in _clients)
+            {
+                <tr>
+                    <td>@c.Name</td>
+                    <td>@c.ContactPerson</td>
+                    <td>@c.Email</td>
+                    <td>@c.Phone</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" href="@($"/app/clients/{c.Id}")">Modifier</a>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => AskDelete(c)">Supprimer</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (_pendingDelete is not null)
+{
+    <div class="alert alert-warning">
+        <p>
+            Supprimer <strong>@_pendingDelete.Name</strong> ?
+            @if (_pendingDeleteInvoices > 0)
+            {
+                <span>
+                    Ce client a @_pendingDeleteInvoices facture(s) : il sera masqué
+                    (suppression logique) mais conservé pour la traçabilité.
+                </span>
+            }
+        </p>
+        <button class="btn btn-sm btn-danger" @onclick="ConfirmDelete">Confirmer</button>
+        <button class="btn btn-sm btn-secondary" @onclick="() => _pendingDelete = null">Annuler</button>
+    </div>
+}
+
+@code {
+    private List<Client>? _clients;
+    private string _search = string.Empty;
+    private Client? _pendingDelete;
+    private int _pendingDeleteInvoices;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load() => _clients = await ClientService.SearchAsync(_search);
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString() ?? string.Empty;
+        await Load();
+    }
+
+    private async Task AskDelete(Client c)
+    {
+        _pendingDelete = c;
+        _pendingDeleteInvoices = await ClientService.CountInvoicesAsync(c.Id);
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (_pendingDelete is null) return;
+        await ClientService.SoftDeleteAsync(_pendingDelete.Id);
+        _pendingDelete = null;
+        await Load();
+    }
+}
