@@ -59,6 +59,8 @@ builder.Services.AddDataProtection()
 // --- Services métier ---
 builder.Services.AddScoped<IPasswordHasher, Pbkdf2PasswordHasher>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+// Compteur partagé par toutes les tentatives : doit survivre aux requêtes.
+builder.Services.AddSingleton<LoginThrottle>();
 builder.Services.AddScoped<IBusinessProfileService, BusinessProfileService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IAuditService, AuditService>();

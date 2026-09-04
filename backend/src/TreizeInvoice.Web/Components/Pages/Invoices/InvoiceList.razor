@@ -3,6 +3,7 @@
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject IInvoiceService InvoiceService
 @inject NavigationManager Nav
+@implements IDisposable
 
 <PageTitle>Rechnungen — TreizeInvoice</PageTitle>
 
@@ -267,6 +268,12 @@ else
 
     protected override async Task OnInitializedAsync() => await Load();
 
+    public void Dispose()
+    {
+        _debounce?.Cancel();
+        _debounce?.Dispose();
+    }
+
     private async Task Load()
     {
         _page = await InvoiceService.SearchAsync(new InvoiceQuery(
@@ -285,6 +292,7 @@ else
     {
         _text = value;
         _debounce?.Cancel();
+        _debounce?.Dispose();
         _debounce = new CancellationTokenSource();
         var token = _debounce.Token;
         try

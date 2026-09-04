@@ -172,6 +172,25 @@ antérieures doivent être conservées avec les pièces comptables.
 
 ## Déploiement (landing et application séparées)
 
+### Option 0 — usage privé, sans rien publier
+Pour une seule utilisatrice sur son propre poste, l'application n'a pas besoin d'être
+en ligne : `dotnet run` puis `http://localhost:5287`. Aucun serveur, aucun coût,
+aucune surface d'attaque, et les données ne quittent pas la machine.
+
+Ce que cela implique quand même :
+- la sauvegarde devient **entièrement** votre responsabilité (§147 AO : dix ans). Le ZIP
+  des Einstellungen doit partir sur un support distinct de la machine ;
+- l'application n'est accessible que depuis ce poste, pas depuis un téléphone ;
+- un disque perdu, c'est la comptabilité perdue.
+
+**Netlify ne convient pas pour l'application.** Netlify sert des fichiers statiques et
+des fonctions serverless de courte durée. TreizeInvoice est un processus .NET permanent,
+avec une connexion WebSocket ouverte par session (Blazor Server) et un fichier SQLite à
+écrire sur un disque persistant. Aucune des trois conditions n'est remplie. Netlify (ou
+Cloudflare Pages) convient en revanche parfaitement à la **landing**, qui est du HTML pur.
+
+### Option 1 — landing publique, application sur un serveur
+
 La landing et l'application sont déployées indépendamment. Elles ne communiquent pas :
 la landing est du HTML statique qui **pointe** simplement vers l'application (aucun appel
 d'API, donc aucune question de CORS ni de session partagée).
