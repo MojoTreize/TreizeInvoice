@@ -102,6 +102,75 @@ contenant la base et tous les PDF archivés. L'instantané de la base est pris a
 écritures encore en journal.
 Conservez ces archives **hors de la machine** (les obligations GoBD portent sur 10 ans).
 
+## Déploiement (landing et application séparées)
+
+La landing et l'application sont déployées indépendamment. Elles ne communiquent pas :
+la landing est du HTML statique qui **pointe** simplement vers l'application (aucun appel
+d'API, donc aucune question de CORS ni de session partagée).
+
+```
+treizeinvoice.de              landing statique      Cloudflare Pages
+app.treizeinvoice.de          application Blazor    VPS (Hetzner, netcup…)
+```
+
+Avantage : la vitrine reste en ligne même si l'application est arrêtée pour maintenance.
+
+### 1. Landing — Cloudflare Pages
+- Connecter le dépôt GitHub, **build command** : aucune, **output directory** : `frontend`
+- Domaine personnalisé : `treizeinvoice.de`
+- [`frontend/_redirects`](frontend/_redirects) renvoie `/login` et `/register` vers
+  le sous-domaine de l'application : les liens de la landing restent relatifs et
+  `index.html` n'a pas à être modifié. **Adaptez-y votre domaine.**
+
+### 2. Application — VPS Linux
+
+Publier puis copier sur le serveur :
+
+```powershell
+cd backend
+dotnet publish src/TreizeInvoice.Web -c Release -o publish
+```
+
+Sur le serveur, `/etc/systemd/system/treizeinvoice.service` :
+
+```ini
+[Unit]
+Description=TreizeInvoice
+After=network.target
+
+[Service]
+WorkingDirectory=/var/www/treizeinvoice
+ExecStart=/usr/bin/dotnet /var/www/treizeinvoice/TreizeInvoice.Web.dll
+Restart=always
+User=www-data
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
+Environment=Storage__DataPath=/var/lib/treizeinvoice
+Environment=Storage__LogoPath=/var/www/treizeinvoice/assets/treizeinvoice-mark-mono.svg
+
+[Install]
+WantedBy=multi-user.target
+```
+
+`Caddyfile` (HTTPS automatique, WebSocket pris en charge pour Blazor Server) :
+
+```
+app.treizeinvoice.de {
+    reverse_proxy 127.0.0.1:5000
+}
+```
+
+### Points d'attention
+- **`Storage__DataPath`** : hors du dossier de l'application, sinon un redéploiement
+  écraserait la base et les PDF archivés.
+- **Clés de protection** : conservées dans `{DataPath}/keys`, elles survivent aux
+  redéploiements (sinon chaque mise à jour déconnecte l'utilisateur).
+- **Premier lancement** : le mot de passe généré apparaît dans `journalctl -u treizeinvoice`.
+  Vous pouvez aussi le fixer via `Seed__Password`.
+- **Blazor Server** exige une connexion WebSocket permanente : un serveur toujours
+  actif est nécessaire (pas d'hébergement statique ni de serverless).
+- **Sauvegardes** : `{DataPath}` contient toute la comptabilité. À sauvegarder hors serveur.
+
 ## Base de données — migrations
 ```powershell
 cd backend

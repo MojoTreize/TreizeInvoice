@@ -1,0 +1,8 @@
+# Redirections Cloudflare Pages.
+# La landing garde ses liens relatifs (/login, /register) : ces règles les
+# renvoient vers l'application. Remplacez le domaine par le vôtre.
+
+/login       https://app.treizeinvoice.de/login       302
+/register    https://app.treizeinvoice.de/register    302
+/app         https://app.treizeinvoice.de/app         302
+/app/*       https://app.treizeinvoice.de/app/:splat  302

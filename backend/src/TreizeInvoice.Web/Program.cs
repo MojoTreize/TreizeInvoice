@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using TreizeInvoice.Data;
 using TreizeInvoice.Services.Auditing;
@@ -17,11 +19,28 @@ using TreizeInvoice.Web.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- Base de données SQLite (fichier dans backend/data) ---
-var dataDir = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "data"));
+// --- Emplacements de stockage ---
+// Configurables (Storage:DataPath, Storage:LogoPath) : après publication, les
+// chemins relatifs du dépôt de développement ne résolvent plus.
+var dataDir = builder.Configuration["Storage:DataPath"]
+    ?? Path.Combine(builder.Environment.ContentRootPath, "..", "..", "data");
+dataDir = Path.GetFullPath(dataDir);
 Directory.CreateDirectory(dataDir);
+
+var archiveDir = Path.Combine(dataDir, "archive");
 var dbPath = Path.Combine(dataDir, "treizeinvoice.db");
+
+var logoPath = Path.GetFullPath(builder.Configuration["Storage:LogoPath"]
+    ?? Path.Combine(builder.Environment.ContentRootPath,
+        "..", "..", "..", "frontend", "assets", "treizeinvoice-mark-mono.svg"));
+
 builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite($"Data Source={dbPath}"));
+
+// Les clés doivent survivre aux redéploiements, sinon chaque mise à jour
+// invalide les cookies de session et les jetons antiforgery.
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(dataDir, "keys")))
+    .SetApplicationName("TreizeInvoice");
 
 // --- Services métier ---
 builder.Services.AddScoped<IPasswordHasher, Pbkdf2PasswordHasher>();
@@ -34,17 +53,18 @@ builder.Services.AddScoped<IInvoiceTotalsCalculator, KleinunternehmerTotalsCalcu
 builder.Services.AddScoped<IInvoiceNumberGenerator, InvoiceNumberGenerator>();
 builder.Services.AddScoped<IJournalService, JournalService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
-builder.Services.AddSingleton(new BackupPaths(dbPath, Path.Combine(dataDir, "archive")));
+builder.Services.AddSingleton(new BackupPaths(dbPath, archiveDir));
 builder.Services.AddScoped<IBackupService, BackupService>();
 
-// Logo monochrome de la landing page, réutilisé en en-tête des PDF.
-var logoPath = Path.GetFullPath(Path.Combine(
-    builder.Environment.ContentRootPath, "..", "..", "..", "frontend", "assets", "treizeinvoice-mark-mono.svg"));
 builder.Services.AddSingleton(new PdfAssets(logoPath));
 builder.Services.AddScoped<IInvoicePdfRenderer, QuestPdfInvoiceRenderer>();
-builder.Services.AddSingleton<IInvoiceArchive>(
-    new FileSystemInvoiceArchive(Path.Combine(dataDir, "archive")));
+builder.Services.AddSingleton<IInvoiceArchive>(new FileSystemInvoiceArchive(archiveDir));
 builder.Services.AddScoped<DatabaseInitializer>();
+
+// Derrière un reverse proxy (Caddy, nginx) : sans cela l'application se croit
+// en HTTP et les cookies sécurisés seraient refusés.
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto);
 
 // --- Authentification par cookie (mono-utilisateur) ---
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -54,6 +74,11 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.AccessDeniedPath = "/login";
         options.ExpireTimeSpan = TimeSpan.FromDays(7);
         options.SlidingExpiration = true;
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
     });
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
@@ -82,11 +107,12 @@ using (var scope = app.Services.CreateScope())
 
 if (!app.Environment.IsDevelopment())
 {
+    app.UseForwardedHeaders();
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     app.UseHsts();
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseAuthentication();
