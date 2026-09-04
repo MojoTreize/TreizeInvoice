@@ -4,6 +4,7 @@
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject IInvoiceService InvoiceService
 @inject IClientService ClientService
+@inject IBusinessProfileService ProfileService
 @inject IInvoiceTotalsCalculator Totals
 @inject NavigationManager Nav
 
@@ -11,6 +12,7 @@
 
 <h1 class="underlined">@(IsNew ? "Neue Rechnung" : "Entwurf bearbeiten")</h1>
 
+<div class="editor-grid">
 <section class="panel">
 @if (_locked)
 {
@@ -37,7 +39,8 @@ else
         <div class="row">
             <div class="form-group col-md-6">
                 <label for="invClient">Kunde *</label>
-                <InputSelect id="invClient" class="form-select" @bind-Value="_invoice.ClientId">
+                <InputSelect id="invClient" class="form-select" @bind-Value="_invoice.ClientId"
+                             @bind-Value:after="StateHasChanged">
                     <option value="0">— Kunde wählen —</option>
                     @foreach (var c in _clients)
                     {
@@ -48,11 +51,13 @@ else
             </div>
             <div class="form-group col-md-3">
                 <label for="invDate">Rechnungsdatum *</label>
-                <InputDate id="invDate" class="form-control" @bind-Value="_invoice.InvoiceDate" />
+                <InputDate id="invDate" class="form-control" @bind-Value="_invoice.InvoiceDate"
+                           @bind-Value:after="StateHasChanged" />
             </div>
             <div class="form-group col-md-3">
                 <label for="invTerm">Zahlungsziel (Tage)</label>
-                <InputNumber id="invTerm" class="form-control" @bind-Value="_invoice.PaymentTermDays" />
+                <InputNumber id="invTerm" class="form-control" @bind-Value="_invoice.PaymentTermDays"
+                             @bind-Value:after="StateHasChanged" />
                 <ValidationMessage For="() => _invoice.PaymentTermDays" />
             </div>
         </div>
@@ -60,12 +65,16 @@ else
         <div class="row">
             <div class="form-group col-md-4">
                 <label for="invService">Leistungsdatum</label>
-                <InputDate id="invService" class="form-control" @bind-Value="_invoice.ServiceDate" />
+                <InputDate id="invService" class="form-control" @bind-Value="_invoice.ServiceDate"
+                           @bind-Value:after="StateHasChanged" />
             </div>
             <div class="form-group col-md-8">
                 <label for="invPeriod">Leistungszeitraum (Freitext)</label>
-                <InputText id="invPeriod" class="form-control" @bind-Value="_invoice.ServicePeriod"
-                           placeholder="z. B. 01.03.2026 – 31.03.2026" />
+                @* InputText ne permet pas de choisir l'événement : sans oninput,
+                   l'aperçu n'avancerait qu'à la sortie du champ. *@
+                <input id="invPeriod" class="form-control" value="@_invoice.ServicePeriod"
+                       @oninput="e => _invoice.ServicePeriod = e.Value?.ToString()"
+                       placeholder="z. B. 01.03.2026 – 31.03.2026" />
             </div>
         </div>
 
@@ -92,7 +101,9 @@ else
                     {
                         <tr @key="item">
                             <td>
-                                <InputText class="form-control" aria-label="Beschreibung der Position" @bind-Value="item.Description" />
+                                <input class="form-control" aria-label="Beschreibung der Position"
+                                       value="@item.Description"
+                                       @oninput="e => item.Description = e.Value?.ToString() ?? string.Empty" />
                             </td>
                             <td>
                                 <InputNumber class="form-control text-end" aria-label="Menge" @bind-Value="item.Quantity"
@@ -125,7 +136,8 @@ else
 
         <div class="form-group mt-4">
             <label for="invNotes">Anmerkungen</label>
-            <InputTextArea id="invNotes" class="form-control" rows="2" @bind-Value="_invoice.Notes" />
+            <textarea id="invNotes" class="form-control" rows="2" value="@_invoice.Notes"
+                      @oninput="e => _invoice.Notes = e.Value?.ToString()"></textarea>
         </div>
 
         <div class="save-as">
@@ -175,6 +187,31 @@ else
 }
 </section>
 
+@if (!_locked && _invoice is not null && _clients is not null)
+{
+    <aside class="preview-pane">
+        <div class="preview-head">
+            <h2>Vorschau</h2>
+            <span class="preview-note">So wird das PDF aussehen</span>
+        </div>
+
+        <InvoicePreview Invoice="_invoice"
+                        Profile="_profile"
+                        Client="SelectedClient"
+                        Items="_items"
+                        Total="CurrentTotal" />
+
+        @if (_profile is not null && MissingProfileFields.Count > 0)
+        {
+            <p class="preview-warning">
+                Für eine gültige Rechnung fehlt noch: @string.Join(", ", MissingProfileFields).
+                <a href="/app/einstellungen">In den Einstellungen ergänzen</a>
+            </p>
+        }
+    </aside>
+}
+</div>
+
 @code {
     [Parameter] public int? Id { get; set; }
 
@@ -182,6 +219,7 @@ else
 
     private Invoice? _invoice;
     private List<Client>? _clients;
+    private BusinessProfile? _profile;
     private readonly List<InvoiceItem> _items = new();
     private string? _error;
     private bool _locked;
@@ -189,6 +227,23 @@ else
     private bool _saving;
 
     private bool IsNew => Id is null;
+
+    private Client? SelectedClient => _clients?.FirstOrDefault(c => c.Id == _invoice?.ClientId);
+
+    /// <summary>Mêmes exigences que le contrôle à l'émission, mais signalées dès la saisie.</summary>
+    private List<string> MissingProfileFields
+    {
+        get
+        {
+            var missing = new List<string>();
+            if (_profile is null) return missing;
+            if (string.IsNullOrWhiteSpace(_profile.FullName)) missing.Add("Name");
+            if (string.IsNullOrWhiteSpace(_profile.Address)) missing.Add("Anschrift");
+            if (string.IsNullOrWhiteSpace(_profile.Steuernummer)) missing.Add("Steuernummer");
+            if (string.IsNullOrWhiteSpace(_profile.Iban)) missing.Add("IBAN");
+            return missing;
+        }
+    }
 
     private string SaveLabel => _saveAs switch
     {
@@ -214,6 +269,7 @@ else
     protected override async Task OnParametersSetAsync()
     {
         _clients = await ClientService.SearchAsync();
+        _profile = await ProfileService.GetAsync();
 
         if (IsNew)
         {

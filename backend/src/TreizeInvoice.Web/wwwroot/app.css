@@ -349,6 +349,170 @@ th.text-end {
     max-width: 62ch;
 }
 
+/* ---------- Saisie avec aperçu du document ---------- */
+.editor-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    gap: 1.15rem;
+    align-items: start;
+}
+
+.editor-grid > * {
+    min-width: 0;
+}
+
+.preview-pane {
+    position: sticky;
+    top: 1.15rem;
+}
+
+.preview-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-bottom: .6rem;
+}
+
+.preview-head h2 {
+    margin: 0;
+    font-size: 1.05rem;
+}
+
+.preview-note {
+    font-size: .8rem;
+    color: var(--ink-soft);
+}
+
+.preview-warning {
+    margin-top: .7rem;
+    font-size: .84rem;
+    color: var(--ink-soft);
+}
+
+/* Le document lui-même : sobre, proche du PDF, pas un panneau d'application. */
+.beleg {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.4rem 1.5rem;
+    font-size: .78rem;
+    line-height: 1.5;
+}
+
+.beleg-sender {
+    font-size: .62rem;
+    color: var(--ink-soft);
+    margin-bottom: 1.1rem;
+    overflow-wrap: anywhere;
+}
+
+.beleg-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 1.2rem;
+    flex-wrap: wrap;
+}
+
+.beleg-empfaenger {
+    font-style: normal;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.beleg-felder {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: .15rem .7rem;
+    margin: 0;
+    font-size: .72rem;
+    align-content: start;
+}
+
+.beleg-felder dt {
+    color: var(--ink-soft);
+    font-weight: 400;
+}
+
+.beleg-felder dd {
+    margin: 0;
+    font-weight: 600;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.beleg-missing,
+.beleg-pending {
+    font-weight: 400;
+    font-style: italic;
+    color: var(--ink-soft);
+}
+
+.beleg-missing {
+    color: #A8531F;
+}
+
+.beleg-titel {
+    font-size: 1.05rem;
+    margin: 1.3rem 0 .8rem;
+}
+
+.beleg-tabelle {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .72rem;
+}
+
+.beleg-tabelle th,
+.beleg-tabelle td {
+    padding: .35rem .3rem;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+}
+
+.beleg-tabelle thead th {
+    border-bottom: 1.5px solid var(--ink);
+    font-size: .66rem;
+}
+
+.beleg-tabelle .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.beleg-tabelle tfoot th {
+    border-bottom: none;
+    border-top: 1.5px solid var(--ink);
+    font-size: .82rem;
+}
+
+.beleg-hinweis {
+    margin-top: .9rem;
+    padding: .45rem .6rem;
+    background: var(--sage, #DFE8DA);
+    border-left: 3px solid #7E9C71;
+}
+
+.beleg-bank {
+    display: flex;
+    flex-direction: column;
+    margin-top: .9rem;
+}
+
+.beleg-notiz {
+    margin-top: .8rem;
+    color: var(--ink-soft);
+}
+
+/* En dessous, l'aperçu descendrait sous ~340 px et deviendrait illisible. */
+@media (max-width: 1080px) {
+    .editor-grid { grid-template-columns: 1fr; }
+    .preview-pane { position: static; }
+}
+
 .panel-grid {
     display: grid;
     grid-template-columns: 1.55fr 1fr;

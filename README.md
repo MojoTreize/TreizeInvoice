@@ -111,6 +111,18 @@ Une facture émise ne se modifie pas (GoBD). `Korrigieren` enchaîne la seule co
 licite : Stornorechnung, puis nouveau brouillon reprenant les lignes, à rectifier et
 réémettre. Les deux pièces d'origine restent en base.
 
+## Aperçu du document pendant la saisie
+`Neue Rechnung` affiche à droite le document tel qu'il sera archivé, mis à jour à la
+frappe : destinataire, mentions §14, ligne §19, échéance calculée, coordonnées bancaires.
+Les manques y sont visibles avant l'émission (« Steuernummer fehlt », « ohne
+Beschreibung ») plutôt qu'au moment du refus.
+
+Le PDF (`QuestPdfInvoiceRenderer`) et l'aperçu (`InvoicePreview.razor`) lisent les mêmes
+constantes, `InvoiceDocumentText`. Un aperçu qui montrerait une mention absente du
+document final serait pire que pas d'aperçu du tout sur un outil qui vend la conformité ;
+partager les chaînes rend la dérive impossible sur ce qui a une portée juridique
+(`InvoiceDocumentTextTests`).
+
 ## Export CSV (EÜR)
 `journal-{année}.csv` : séparateur `;`, virgule décimale, dates `TT.MM.JJJJ`, UTF-8 avec BOM
 — s'ouvre directement dans Excel en allemand. Les montants sont signés (dépenses négatives),
