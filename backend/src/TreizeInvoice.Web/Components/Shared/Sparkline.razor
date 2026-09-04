@@ -1,6 +1,10 @@
-@* Mini-courbe d'un indicateur. Purement décorative : aria-hidden. *@
+@* Mini-courbe d'un indicateur, cumul depuis le début de l'exercice.
+   L'échelle est imposée par l'appelant et partagée par toutes les cartes :
+   sans cela, chaque série serait normalisée sur son propre maximum et une
+   dépense de 70 € dessinerait la même courbe qu'une recette de 2 000 €. *@
 
 <svg class="kpi-spark" viewBox="0 0 100 34" preserveAspectRatio="none" aria-hidden="true">
+    <line x1="0" y1="30" x2="100" y2="30" class="spark-base" />
     <polyline class="chart-line @ColorClass" points="@Points" />
 </svg>
 
@@ -8,21 +12,23 @@
     [Parameter, EditorRequired] public IReadOnlyList<decimal> Values { get; set; } = Array.Empty<decimal>();
     [Parameter] public string ColorClass { get; set; } = "chart-line-revenue";
 
+    /// <summary>Maximum commun à toutes les mini-courbes. Les hauteurs restent comparables.</summary>
+    [Parameter] public decimal Scale { get; set; }
+
     private string Points
     {
         get
         {
-            if (Values.Count == 0) return "0,17 100,17";
-            if (Values.Count == 1) return "0,17 100,17";
+            if (Values.Count < 2) return "0,30 100,30";
 
-            var min = Values.Min();
-            var max = Values.Max();
-            var span = max - min;
+            var max = Scale > 0 ? Scale : Values.Max();
+            if (max <= 0) return "0,30 100,30";
 
             return string.Join(' ', Values.Select((v, i) =>
             {
                 var x = (double)i / (Values.Count - 1) * 100;
-                var y = span == 0 ? 17 : 30 - (double)((v - min) / span) * 26;
+                var ratio = Math.Clamp((double)(v / max), 0, 1);
+                var y = 30 - ratio * 26;
                 return FormattableString.Invariant($"{x:0.##},{y:0.##}");
             }));
         }

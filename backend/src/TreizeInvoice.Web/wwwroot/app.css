@@ -304,6 +304,12 @@ th.text-end {
     height: 30px;
 }
 
+.spark-base {
+    stroke: var(--line);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+}
+
 .accent-green { color: var(--green); }
 .accent-red { color: var(--danger); }
 .accent-orange { color: var(--orange); }
@@ -919,6 +925,15 @@ label {
 }
 
 /* ---------- Adaptatif ---------- */
+/* Sans min-width:0, un enfant de grille refuse de r\u00e9tr\u00e9cir sous la taille de
+   son contenu : les tableaux et l'axe des mois faisaient d\u00e9border la page. */
+.panel-grid > *,
+.kpi-grid > *,
+.panel,
+.kpi {
+    min-width: 0;
+}
+
 @media (max-width: 1250px) {
     .kpi-grid { grid-template-columns: repeat(2, 1fr); }
 }
@@ -930,8 +945,19 @@ label {
     .content::after { display: none; }
 }
 
+@media (max-width: 900px) {
+    /* Les tableaux larges d\u00e9filent dans leur panneau plut\u00f4t que d'\u00e9largir la page. */
+    .panel { overflow-x: auto; }
+    .chart { grid-template-columns: 40px 1fr; }
+    .chart-yaxis, .chart-axis { font-size: .6rem; }
+    .chart svg { height: 150px; }
+    .page-head { gap: .8rem; }
+}
+
 @media (max-width: 640px) {
     .kpi-grid { grid-template-columns: 1fr; }
-    h1 { font-size: 2rem; }
+    h1 { font-size: 1.9rem; }
     .kpi-spark { display: none; }
+    .kpi-value { font-size: 1.7rem; }
+    .chart-legend { flex-wrap: wrap; gap: .6rem; }
 }

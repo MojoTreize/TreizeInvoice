@@ -45,7 +45,7 @@ else
         <div class="kpi">
             <span class="kpi-label">Chiffre d'affaires facturé</span>
             <span class="kpi-value">@Euro(_summary.Invoiced)</span>
-            <Sparkline Values="Cumulative(p => p.Revenue)" ColorClass="chart-line-expenses" />
+            <Sparkline Values="Cumulative(p => p.Invoiced)" Scale="SparkScale" ColorClass="chart-line-expenses" />
         </div>
 
         <div class="kpi">
@@ -60,14 +60,14 @@ else
                     <text> vs @(_year - 1)</text>
                 }
             </span>
-            <Sparkline Values="Cumulative(p => p.Revenue)" ColorClass="chart-line-revenue" />
+            <Sparkline Values="Cumulative(p => p.Revenue)" Scale="SparkScale" ColorClass="chart-line-revenue" />
         </div>
 
         <div class="kpi">
             <span class="kpi-label">Dépenses</span>
             <span class="kpi-value">@Euro(_summary.Expenses)</span>
             <span class="kpi-note">résultat @Euro(_summary.Result)</span>
-            <Sparkline Values="Cumulative(p => p.Expenses)" ColorClass="chart-line-result" />
+            <Sparkline Values="Cumulative(p => p.Expenses)" Scale="SparkScale" ColorClass="chart-line-result" />
         </div>
 
         <div class="kpi">
@@ -272,6 +272,21 @@ else
     {
         _summary = await Dashboard.GetAsync(_year, _today);
         _overdueCount = _summary.Unpaid.Count(i => i.DaysOverdue(_today) > 0);
+    }
+
+    /// <summary>Échelle partagée par les mini-courbes, pour que leurs hauteurs restent comparables.</summary>
+    private decimal SparkScale
+    {
+        get
+        {
+            var series = new[]
+            {
+                Cumulative(p => p.Invoiced),
+                Cumulative(p => p.Revenue),
+                Cumulative(p => p.Expenses)
+            };
+            return series.Where(s => s.Count > 0).Select(s => s.Max()).DefaultIfEmpty(0).Max();
+        }
     }
 
     /// <summary>Cumul mois par mois, jusqu'au mois courant : donne une courbe qui progresse.</summary>

@@ -126,6 +126,15 @@ if (Directory.Exists(frontendPath))
     var landing = new PhysicalFileProvider(frontendPath);
     app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = landing });
     app.UseStaticFiles(new StaticFileOptions { FileProvider = landing });
+
+    // Cloudflare Pages sert /impressum depuis impressum.html ; en local il faut le déclarer.
+    foreach (var page in new[] { "impressum", "datenschutz" })
+    {
+        var file = Path.Combine(frontendPath, $"{page}.html");
+        app.MapGet($"/{page}", () => File.Exists(file)
+            ? Results.File(file, "text/html; charset=utf-8")
+            : Results.NotFound());
+    }
 }
 
 app.UseAuthentication();

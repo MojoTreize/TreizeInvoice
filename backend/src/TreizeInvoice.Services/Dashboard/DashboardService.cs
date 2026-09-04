@@ -5,8 +5,8 @@ using TreizeInvoice.Domain.Enums;
 
 namespace TreizeInvoice.Services.Dashboard;
 
-/// <summary>Recettes et dépenses d'un mois, pour la courbe de l'exercice.</summary>
-public record MonthlyPoint(int Month, decimal Revenue, decimal Expenses);
+/// <summary>Montants d'un mois : facturé (date de facture), encaissé et dépensé (journal).</summary>
+public record MonthlyPoint(int Month, decimal Invoiced, decimal Revenue, decimal Expenses);
 
 /// <summary>Nombre de factures par statut, pour l'anneau de répartition.</summary>
 public record StatusCount(InvoiceStatus Status, int Count);
@@ -96,6 +96,11 @@ public class DashboardService : IDashboardService
         var monthly = Enumerable.Range(1, 12)
             .Select(m => new MonthlyPoint(
                 m,
+                invoices
+                    .Where(i => i.InvoiceDate.Month == m
+                                && i.Status is InvoiceStatus.Issued or InvoiceStatus.Paid
+                                && i.CancelsInvoiceId is null)
+                    .Sum(i => i.Total),
                 journal.Where(e => e.Date.Month == m && e.Type == JournalEntryType.Recette).Sum(e => e.Amount),
                 journal.Where(e => e.Date.Month == m && e.Type == JournalEntryType.Depense).Sum(e => e.Amount)))
             .ToList();
