@@ -85,7 +85,7 @@ public class QuestPdfInvoiceRenderer : IInvoicePdfRenderer
             col.Spacing(14);
 
             // Ligne expéditeur au-dessus de l'adresse du destinataire (usage postal allemand).
-            col.Item().Text($"{profile.FullName} · {OneLine(profile.Address)}")
+            col.Item().Text(InvoiceDocumentText.SenderLine(profile))
                 .FontSize(7).FontColor(Colors.Grey.Darken1);
 
             col.Item().Row(row =>
@@ -102,27 +102,25 @@ public class QuestPdfInvoiceRenderer : IInvoicePdfRenderer
                 row.ConstantItem(200).Column(c =>
                 {
                     c.Spacing(2);
-                    Field(c, "Rechnungsnummer", invoice.InvoiceNumber ?? "—");
-                    Field(c, "Rechnungsdatum", invoice.InvoiceDate.ToString("dd.MM.yyyy", De));
+                    Field(c, InvoiceDocumentText.InvoiceNumberLabel, invoice.InvoiceNumber ?? "—");
+                    Field(c, InvoiceDocumentText.InvoiceDateLabel, InvoiceDocumentText.Date(invoice.InvoiceDate));
                     if (invoice.ServiceDate is { } sd)
-                        Field(c, "Leistungsdatum", sd.ToString("dd.MM.yyyy", De));
+                        Field(c, InvoiceDocumentText.ServiceDateLabel, InvoiceDocumentText.Date(sd));
                     if (!string.IsNullOrWhiteSpace(invoice.ServicePeriod))
-                        Field(c, "Leistungszeitraum", invoice.ServicePeriod);
+                        Field(c, InvoiceDocumentText.ServicePeriodLabel, invoice.ServicePeriod);
                     if (!string.IsNullOrWhiteSpace(profile.Steuernummer))
-                        Field(c, "Steuernummer", profile.Steuernummer);
+                        Field(c, InvoiceDocumentText.TaxNumberLabel, profile.Steuernummer);
                 });
             });
 
             col.Item().PaddingTop(10)
-                .Text(isStorno
-                    ? $"Stornorechnung Nr. {invoice.InvoiceNumber}"
-                    : $"Rechnung Nr. {invoice.InvoiceNumber}")
+                .Text(InvoiceDocumentText.Title(isStorno, invoice.InvoiceNumber))
                 .FontSize(16).Bold();
 
             if (isStorno && invoice.CancelsInvoice is not null)
             {
-                col.Item().Text($"Storno zu Rechnung Nr. {invoice.CancelsInvoice.InvoiceNumber} "
-                                + $"vom {invoice.CancelsInvoice.InvoiceDate.ToString("dd.MM.yyyy", De)}")
+                col.Item().Text(InvoiceDocumentText.StornoReference(
+                        invoice.CancelsInvoice.InvoiceNumber, invoice.CancelsInvoice.InvoiceDate))
                     .SemiBold();
             }
 
@@ -130,17 +128,14 @@ public class QuestPdfInvoiceRenderer : IInvoicePdfRenderer
 
             if (profile.IsKleinunternehmer)
             {
-                // Mention obligatoire pour les Kleinunternehmer (§19 UStG) : formulation exacte.
-                col.Item().PaddingTop(4)
-                    .Text("Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.");
+                col.Item().PaddingTop(4).Text(InvoiceDocumentText.KleinunternehmerNotice);
             }
 
-            col.Item().Text($"Zahlbar ohne Abzug bis zum {dueDate.ToString("dd.MM.yyyy", De)} "
-                            + $"({invoice.PaymentTermDays} Tage).");
+            col.Item().Text(InvoiceDocumentText.PaymentTerms(dueDate, invoice.PaymentTermDays));
 
             col.Item().Column(c =>
             {
-                c.Item().Text("Bankverbindung").SemiBold();
+                c.Item().Text(InvoiceDocumentText.BankDetailsLabel).SemiBold();
                 c.Item().Text($"{profile.BankName}");
                 c.Item().Text($"IBAN: {profile.Iban}");
                 c.Item().Text($"BIC: {profile.Bic}");
@@ -166,11 +161,11 @@ public class QuestPdfInvoiceRenderer : IInvoicePdfRenderer
 
             table.Header(h =>
             {
-                HeaderCell(h, "Pos.");
-                HeaderCell(h, "Beschreibung");
-                HeaderCell(h, "Menge", true);
-                HeaderCell(h, "Einzelpreis", true);
-                HeaderCell(h, "Betrag", true);
+                HeaderCell(h, InvoiceDocumentText.PositionHeader);
+                HeaderCell(h, InvoiceDocumentText.DescriptionHeader);
+                HeaderCell(h, InvoiceDocumentText.QuantityHeader, true);
+                HeaderCell(h, InvoiceDocumentText.UnitPriceHeader, true);
+                HeaderCell(h, InvoiceDocumentText.AmountHeader, true);
             });
 
             var position = 1;
@@ -178,14 +173,14 @@ public class QuestPdfInvoiceRenderer : IInvoicePdfRenderer
             {
                 BodyCell(table, position.ToString());
                 BodyCell(table, item.Description);
-                BodyCell(table, item.Quantity.ToString("0.###", De), true);
+                BodyCell(table, InvoiceDocumentText.Quantity(item.Quantity), true);
                 BodyCell(table, Money(item.UnitPrice), true);
                 BodyCell(table, Money(item.LineTotal), true);
                 position++;
             }
 
             table.Cell().ColumnSpan(4).BorderTop(1).PaddingTop(6).AlignRight()
-                .Text("Gesamtbetrag").SemiBold();
+                .Text(InvoiceDocumentText.TotalLabel).SemiBold();
             table.Cell().BorderTop(1).PaddingTop(6).AlignRight()
                 .Text(Money(totals.Gross)).SemiBold();
         });
@@ -197,13 +192,13 @@ public class QuestPdfInvoiceRenderer : IInvoicePdfRenderer
             .Text(text =>
             {
                 text.DefaultTextStyle(t => t.FontSize(7).FontColor(Colors.Grey.Darken1));
-                text.Span($"{profile.FullName} · {OneLine(profile.Address)}");
+                text.Span(InvoiceDocumentText.SenderLine(profile));
                 if (!string.IsNullOrWhiteSpace(profile.Email))
                     text.Span($" · {profile.Email}");
                 if (!string.IsNullOrWhiteSpace(profile.Phone))
                     text.Span($" · {profile.Phone}");
                 if (!string.IsNullOrWhiteSpace(profile.Steuernummer))
-                    text.Span($" · Steuernummer: {profile.Steuernummer}");
+                    text.Span($" · {InvoiceDocumentText.TaxNumberLabel}: {profile.Steuernummer}");
             });
     }
 
@@ -226,11 +221,7 @@ public class QuestPdfInvoiceRenderer : IInvoicePdfRenderer
         (right ? cell.AlignRight() : cell).Text(text);
     }
 
-    private static string Money(decimal value) => value.ToString("N2", De) + " €";
+    private static string Money(decimal value) => InvoiceDocumentText.Money(value);
 
-    private static IEnumerable<string> Lines(string? text) =>
-        (text ?? string.Empty)
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-    private static string OneLine(string? text) => string.Join(", ", Lines(text));
+    private static IEnumerable<string> Lines(string? text) => InvoiceDocumentText.Lines(text);
 }

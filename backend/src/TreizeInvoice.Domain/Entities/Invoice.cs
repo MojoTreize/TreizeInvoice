@@ -55,6 +55,19 @@ public class Invoice
     /// <summary>Total de la facture (somme des lignes).</summary>
     public decimal Total => Items.Sum(i => i.LineTotal);
 
+    /// <summary>
+    /// Copie persistée de <see cref="Total"/> en centimes, tenue à jour par le service
+    /// à chaque enregistrement. Elle n'existe que pour trier et filtrer par montant en
+    /// SQL : SQLite stocke les decimal en TEXT (tri alphabétique) et ne sait pas les
+    /// agréger. Les documents légaux et les totaux affichés restent calculés depuis
+    /// les lignes.
+    /// </summary>
+    public long TotalCents { get; set; }
+
+    /// <summary>Total en centimes, arrondi comme les lignes (arrondi commercial).</summary>
+    public long ComputeTotalCents() =>
+        (long)Math.Round(Total * 100m, 0, MidpointRounding.AwayFromZero);
+
     /// <summary>Échéance de paiement (date de facture + délai convenu).</summary>
     public DateOnly DueDate => InvoiceDate.AddDays(PaymentTermDays);
 

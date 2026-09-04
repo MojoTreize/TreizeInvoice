@@ -1,0 +1,155 @@
+@* Aperçu du document pendant la saisie. Les textes viennent d'InvoiceDocumentText,
+   la même source que le PDF archivé : l'aperçu ne peut pas promettre une mention
+   que le document final n'aurait pas. *@
+@using TreizeInvoice.Services.Invoicing
+
+<article class="beleg" aria-label="Vorschau der Rechnung">
+    @if (Profile is null)
+    {
+        <p class="beleg-empty">Unternehmensangaben werden geladen…</p>
+    }
+    else
+    {
+        <p class="beleg-sender">@InvoiceDocumentText.SenderLine(Profile)</p>
+
+        <div class="beleg-top">
+            <address class="beleg-empfaenger">
+                @if (Client is null)
+                {
+                    <span class="beleg-missing">Noch kein Kunde gewählt</span>
+                }
+                else
+                {
+                    <strong>@Client.Name</strong>
+                    @if (!string.IsNullOrWhiteSpace(Client.ContactPerson))
+                    {
+                        <span>@Client.ContactPerson</span>
+                    }
+                    @foreach (var line in InvoiceDocumentText.Lines(Client.Address))
+                    {
+                        <span>@line</span>
+                    }
+                }
+            </address>
+
+            <dl class="beleg-felder">
+                <dt>@InvoiceDocumentText.InvoiceNumberLabel</dt>
+                <dd>
+                    @if (Invoice.InvoiceNumber is null)
+                    {
+                        <span class="beleg-pending" title="Wird beim Ausstellen vergeben">wird beim Ausstellen vergeben</span>
+                    }
+                    else
+                    {
+                        @Invoice.InvoiceNumber
+                    }
+                </dd>
+
+                <dt>@InvoiceDocumentText.InvoiceDateLabel</dt>
+                <dd>@InvoiceDocumentText.Date(Invoice.InvoiceDate)</dd>
+
+                @if (Invoice.ServiceDate is { } sd)
+                {
+                    <dt>@InvoiceDocumentText.ServiceDateLabel</dt>
+                    <dd>@InvoiceDocumentText.Date(sd)</dd>
+                }
+                @if (!string.IsNullOrWhiteSpace(Invoice.ServicePeriod))
+                {
+                    <dt>@InvoiceDocumentText.ServicePeriodLabel</dt>
+                    <dd>@Invoice.ServicePeriod</dd>
+                }
+
+                <dt>@InvoiceDocumentText.TaxNumberLabel</dt>
+                <dd>
+                    @if (string.IsNullOrWhiteSpace(Profile.Steuernummer))
+                    {
+                        <span class="beleg-missing">fehlt in den Einstellungen</span>
+                    }
+                    else
+                    {
+                        @Profile.Steuernummer
+                    }
+                </dd>
+            </dl>
+        </div>
+
+        <h3 class="beleg-titel">@InvoiceDocumentText.Title(false, Invoice.InvoiceNumber)</h3>
+
+        <table class="beleg-tabelle">
+            <thead>
+                <tr>
+                    <th>@InvoiceDocumentText.PositionHeader</th>
+                    <th>@InvoiceDocumentText.DescriptionHeader</th>
+                    <th class="num">@InvoiceDocumentText.QuantityHeader</th>
+                    <th class="num">@InvoiceDocumentText.UnitPriceHeader</th>
+                    <th class="num">@InvoiceDocumentText.AmountHeader</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ var position = 1; }
+                @foreach (var item in Items)
+                {
+                    <tr>
+                        <td>@position</td>
+                        <td>
+                            @if (string.IsNullOrWhiteSpace(item.Description))
+                            {
+                                <span class="beleg-missing">ohne Beschreibung</span>
+                            }
+                            else
+                            {
+                                @item.Description
+                            }
+                        </td>
+                        <td class="num">@InvoiceDocumentText.Quantity(item.Quantity)</td>
+                        <td class="num">@InvoiceDocumentText.Money(item.UnitPrice)</td>
+                        <td class="num">@InvoiceDocumentText.Money(item.LineTotal)</td>
+                    </tr>
+                    position++;
+                }
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="4" class="num">@InvoiceDocumentText.TotalLabel</th>
+                    <th class="num">@InvoiceDocumentText.Money(Total)</th>
+                </tr>
+            </tfoot>
+        </table>
+
+        @if (Profile.IsKleinunternehmer)
+        {
+            <p class="beleg-hinweis">@InvoiceDocumentText.KleinunternehmerNotice</p>
+        }
+
+        <p>@InvoiceDocumentText.PaymentTerms(DueDate, Invoice.PaymentTermDays)</p>
+
+        <div class="beleg-bank">
+            <strong>@InvoiceDocumentText.BankDetailsLabel</strong>
+            @if (string.IsNullOrWhiteSpace(Profile.Iban))
+            {
+                <span class="beleg-missing">IBAN fehlt in den Einstellungen</span>
+            }
+            else
+            {
+                <span>@Profile.BankName</span>
+                <span>IBAN: @Profile.Iban</span>
+                <span>BIC: @Profile.Bic</span>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Invoice.Notes))
+        {
+            <p class="beleg-notiz">@Invoice.Notes</p>
+        }
+    }
+</article>
+
+@code {
+    [Parameter, EditorRequired] public Invoice Invoice { get; set; } = default!;
+    [Parameter] public BusinessProfile? Profile { get; set; }
+    [Parameter] public Client? Client { get; set; }
+    [Parameter] public IReadOnlyList<InvoiceItem> Items { get; set; } = Array.Empty<InvoiceItem>();
+    [Parameter] public decimal Total { get; set; }
+
+    private DateOnly DueDate => Invoice.InvoiceDate.AddDays(Invoice.PaymentTermDays);
+}

@@ -10,6 +10,7 @@ using TreizeInvoice.Services.Auditing;
 using TreizeInvoice.Services.Auth;
 using TreizeInvoice.Services.Backup;
 using TreizeInvoice.Services.Clients;
+using TreizeInvoice.Services.Compliance;
 using TreizeInvoice.Services.Dashboard;
 using TreizeInvoice.Services.Invoicing;
 using TreizeInvoice.Services.Journal;
@@ -58,6 +59,8 @@ builder.Services.AddDataProtection()
 // --- Services métier ---
 builder.Services.AddScoped<IPasswordHasher, Pbkdf2PasswordHasher>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+// Compteur partagé par toutes les tentatives : doit survivre aux requêtes.
+builder.Services.AddSingleton<LoginThrottle>();
 builder.Services.AddScoped<IBusinessProfileService, BusinessProfileService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
@@ -68,6 +71,7 @@ builder.Services.AddScoped<IJournalService, JournalService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddSingleton(new BackupPaths(dbPath, archiveDir));
 builder.Services.AddScoped<IBackupService, BackupService>();
+builder.Services.AddScoped<IVerfahrensdokumentationService, VerfahrensdokumentationService>();
 
 builder.Services.AddSingleton(new PdfAssets(logoPath));
 builder.Services.AddScoped<IInvoicePdfRenderer, QuestPdfInvoiceRenderer>();
@@ -175,6 +179,13 @@ app.MapGet("/app/sicherung", async (IBackupService backup) =>
 {
     var archive = await backup.CreateAsync();
     return Results.File(archive.Content, "application/zip", archive.FileName);
+}).RequireAuthorization();
+
+// Document exigé par les GoBD : décrit le procédé réellement en place.
+app.MapGet("/app/verfahrensdokumentation", async (IVerfahrensdokumentationService doc) =>
+{
+    var file = await doc.CreateAsync();
+    return Results.File(file.Content, "application/pdf", file.FileName);
 }).RequireAuthorization();
 
 app.MapRazorComponents<App>()

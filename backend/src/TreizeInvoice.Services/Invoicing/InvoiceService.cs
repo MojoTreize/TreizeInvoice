@@ -41,8 +41,79 @@ public class InvoiceService : IInvoiceService
             .ThenByDescending(i => i.Id)
             .ToListAsync();
 
-    public async Task<Invoice?> GetAsync(int id) =>
-        await _db.Invoices
+    public async Task<InvoicePage<Invoice>> SearchAsync(InvoiceQuery query)
+    {
+        var q = _db.Invoices
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Include(i => i.Client)
+            .Include(i => i.Items)
+            .Include(i => i.CancelsInvoice)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(query.Text))
+        {
+            var text = query.Text.Trim();
+            q = q.Where(i =>
+                (i.InvoiceNumber != null && EF.Functions.Like(i.InvoiceNumber, $"%{text}%")) ||
+                EF.Functions.Like(i.Client.Name, $"%{text}%"));
+        }
+
+        if (query.Status is { } status)
+            q = q.Where(i => i.Status == status);
+
+        if (query.From is { } from)
+            q = q.Where(i => i.InvoiceDate >= from);
+
+        if (query.To is { } to)
+            q = q.Where(i => i.InvoiceDate <= to);
+
+        // Le montant est comparé en centimes : la colonne decimal est stockée en TEXT
+        // par SQLite, une comparaison numérique y serait alphabétique.
+        if (query.MinAmount is { } min)
+        {
+            var minCents = (long)Math.Round(min * 100m, 0, MidpointRounding.AwayFromZero);
+            q = q.Where(i => i.TotalCents >= minCents);
+        }
+
+        if (query.MaxAmount is { } max)
+        {
+            var maxCents = (long)Math.Round(max * 100m, 0, MidpointRounding.AwayFromZero);
+            q = q.Where(i => i.TotalCents <= maxCents);
+        }
+
+        var total = await q.CountAsync();
+
+        var ordered = (query.Sort, query.Descending) switch
+        {
+            (InvoiceSort.Number, true) => q.OrderByDescending(i => i.InvoiceNumber),
+            (InvoiceSort.Number, false) => q.OrderBy(i => i.InvoiceNumber),
+            (InvoiceSort.Client, true) => q.OrderByDescending(i => i.Client.Name),
+            (InvoiceSort.Client, false) => q.OrderBy(i => i.Client.Name),
+            (InvoiceSort.Status, true) => q.OrderByDescending(i => i.Status),
+            (InvoiceSort.Status, false) => q.OrderBy(i => i.Status),
+            (InvoiceSort.Amount, true) => q.OrderByDescending(i => i.TotalCents),
+            (InvoiceSort.Amount, false) => q.OrderBy(i => i.TotalCents),
+            (_, false) => q.OrderBy(i => i.InvoiceDate),
+            _ => q.OrderByDescending(i => i.InvoiceDate)
+        };
+
+        var pageSize = Math.Clamp(query.PageSize, 1, 200);
+        var pageCount = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
+        var page = Math.Clamp(query.Page, 1, pageCount);
+
+        var items = await ordered
+            // Départage stable : sans second critère, deux factures du même jour
+            // pourraient changer d'ordre d'une page à l'autre et l'une disparaître.
+            .ThenByDescending(i => i.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new InvoicePage<Invoice>(items, total, page, pageSize);
+    }
+
+    public async Task<Invoice?> GetAsync(int id) =>        await _db.Invoices
             .IgnoreQueryFilters()
             .Include(i => i.Client)
             .Include(i => i.Items)
@@ -56,6 +127,7 @@ public class InvoiceService : IInvoiceService
         draft.IssuedAtUtc = null;
         draft.PaidAtUtc = null;
         draft.CreatedAtUtc = DateTime.UtcNow;
+        draft.TotalCents = draft.ComputeTotalCents();
 
         _db.Invoices.Add(draft);
         await _db.SaveChangesAsync();
@@ -68,7 +140,7 @@ public class InvoiceService : IInvoiceService
         var existing = await _db.Invoices
             .Include(i => i.Items)
             .FirstOrDefaultAsync(i => i.Id == draft.Id)
-            ?? throw new DomainException("Facture introuvable.");
+            ?? throw new DomainException("Rechnung nicht gefunden.");
 
         EnsureDraft(existing);
 
@@ -80,6 +152,7 @@ public class InvoiceService : IInvoiceService
         existing.Notes = draft.Notes;
 
         SyncItems(existing, draft.Items);
+        existing.TotalCents = existing.ComputeTotalCents();
 
         await _db.SaveChangesAsync();
         await _audit.LogAsync(nameof(Invoice), existing.Id, "DraftUpdated", new { Total = existing.Total });
@@ -104,7 +177,7 @@ public class InvoiceService : IInvoiceService
             .IgnoreQueryFilters()
             .Include(i => i.Items)
             .FirstOrDefaultAsync(i => i.Id == id)
-            ?? throw new DomainException("Facture introuvable.");
+            ?? throw new DomainException("Rechnung nicht gefunden.");
 
         var copy = new Invoice
         {
@@ -134,7 +207,7 @@ public class InvoiceService : IInvoiceService
             .Include(i => i.Client)
             .Include(i => i.CancelsInvoice)
             .FirstOrDefaultAsync(i => i.Id == id)
-            ?? throw new DomainException("Facture introuvable.");
+            ?? throw new DomainException("Rechnung nicht gefunden.");
 
         EnsureDraft(invoice);
         EnsureIssuable(invoice);
@@ -169,7 +242,7 @@ public class InvoiceService : IInvoiceService
             .Include(i => i.Items)
             .Include(i => i.Client)
             .FirstOrDefaultAsync(i => i.Id == id)
-            ?? throw new DomainException("Facture introuvable.");
+            ?? throw new DomainException("Rechnung nicht gefunden.");
 
         if (invoice.Status != InvoiceStatus.Issued)
             throw new DomainException(
@@ -177,7 +250,7 @@ public class InvoiceService : IInvoiceService
 
         if (invoice.CancelsInvoiceId is not null)
             throw new DomainException(
-                "Eine Stornorechnung wird nicht vereinnahmt : sie gleicht die Ursprungsrechnung aus.");
+                "Eine Stornorechnung wird nicht vereinnahmt: sie gleicht die Ursprungsrechnung aus.");
 
         invoice.Status = InvoiceStatus.Paid;
         invoice.PaidAtUtc = DateTime.UtcNow;
@@ -205,20 +278,15 @@ public class InvoiceService : IInvoiceService
             .Include(i => i.Items)
             .Include(i => i.Client)
             .FirstOrDefaultAsync(i => i.Id == id)
-            ?? throw new DomainException("Facture introuvable.");
+            ?? throw new DomainException("Rechnung nicht gefunden.");
 
         if (original.Status == InvoiceStatus.Draft)
             throw new DomainException(
-                "Ein Entwurf hat keine rechtliche Wirkung : bitte löschen statt stornieren.");
+                "Ein Entwurf hat keine rechtliche Wirkung: bitte löschen statt stornieren.");
 
         if (original.Status == InvoiceStatus.Cancelled)
             throw new DomainException(
                 $"Rechnung {original.InvoiceNumber} ist bereits storniert.");
-
-        if (original.Status == InvoiceStatus.Paid)
-            throw new DomainException(
-                $"Rechnung {original.InvoiceNumber} ist bereits vereinnahmt. " +
-                "Bitte klären Sie die Stornierung vorab mit Ihrer Steuerberatung.");
 
         // Sans ce garde-fou, on pourrait enchainer des storno de storno à l'infini.
         if (original.CancelsInvoiceId is not null)
@@ -255,9 +323,26 @@ public class InvoiceService : IInvoiceService
             };
 
             _db.Invoices.Add(storno);
+            storno.TotalCents = storno.ComputeTotalCents();
             await _db.SaveChangesAsync();
 
             await IssueCoreAsync(storno, profile);
+
+            // Une facture déjà encaissée a produit une recette au journal. On ne la
+            // supprime pas (GoBD) : on la neutralise par une contre-écriture, sinon
+            // l'EÜR continuerait de compter un encaissement qui a été remboursé.
+            if (original.Status == InvoiceStatus.Paid)
+            {
+                _db.JournalEntries.Add(new JournalEntry
+                {
+                    Date = DateOnly.FromDateTime(DateTime.Today),
+                    Type = JournalEntryType.Recette,
+                    Amount = -original.Total,
+                    Description = $"Storno zu Rechnung {original.InvoiceNumber} — {original.Client.Name}",
+                    Category = "Umsatz",
+                    InvoiceId = storno.Id
+                });
+            }
 
             original.Status = InvoiceStatus.Cancelled;
             original.CancelledByInvoiceId = storno.Id;
@@ -276,6 +361,16 @@ public class InvoiceService : IInvoiceService
             await transaction.RollbackAsync();
             throw;
         }
+    }
+
+    public async Task<Invoice> CorrectAsync(int id)
+    {
+        // Le storno d'abord : s'il échoue, aucun brouillon orphelin n'est créé.
+        await CancelAsync(id);
+
+        var draft = await DuplicateAsDraftAsync(id);
+        await _audit.LogAsync(nameof(Invoice), draft.Id, "CorrectionDrafted", new { CorrectsInvoiceId = id });
+        return draft;
     }
 
     /// <summary>Attribution du numéro, verrouillage et archivage du PDF. À appeler dans une transaction.</summary>
@@ -332,11 +427,7 @@ public class InvoiceService : IInvoiceService
     /// <summary>Mentions obligatoires §14 UStG côté émettrice.</summary>
     private static void EnsureProfileComplete(BusinessProfile profile)
     {
-        var missing = new List<string>();
-        if (string.IsNullOrWhiteSpace(profile.FullName)) missing.Add("Name");
-        if (string.IsNullOrWhiteSpace(profile.Address)) missing.Add("Anschrift");
-        if (string.IsNullOrWhiteSpace(profile.Steuernummer)) missing.Add("Steuernummer");
-        if (string.IsNullOrWhiteSpace(profile.Iban)) missing.Add("IBAN");
+        var missing = ProfileValidation.Check(profile);
 
         if (missing.Count > 0)
             throw new DomainException(

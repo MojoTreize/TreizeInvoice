@@ -56,6 +56,10 @@ public class AppDbContext : DbContext
             e.HasIndex(i => i.InvoiceNumber)
                 .IsUnique()
                 .HasFilter("[InvoiceNumber] IS NOT NULL");
+            // La liste trie et filtre sur ces trois colonnes.
+            e.HasIndex(i => i.InvoiceDate);
+            e.HasIndex(i => i.Status);
+            e.HasIndex(i => i.TotalCents);
             e.HasMany(i => i.Items)
                 .WithOne(it => it.Invoice)
                 .HasForeignKey(it => it.InvoiceId)

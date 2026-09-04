@@ -32,49 +32,59 @@ else
             <div class="alert alert-success" role="alert">Angaben gespeichert.</div>
         }
 
+        @if (ProfileProblems.Count > 0)
+        {
+            <div class="alert alert-warning" role="alert">
+                <strong>Diese Angaben fehlen für eine gültige Rechnung:</strong>
+                @string.Join(", ", ProfileProblems).
+                Ohne sie lässt sich keine Rechnung ausstellen — § 14 Abs. 4 UStG verlangt
+                die vollständige Anschrift, und ohne korrekte IBAN kann niemand zahlen.
+            </div>
+        }
+
         <div class="row">
             <div class="form-group col-md-6">
-                <label>Name / Firma</label>
-                <InputText class="form-control" @bind-Value="_profile.FullName" />
+                <label for="fullName">Name / Firma</label>
+                <InputText id="fullName" class="form-control" @bind-Value="_profile.FullName" />
             </div>
             <div class="form-group col-md-6">
-                <label>E-Mail</label>
-                <InputText class="form-control" @bind-Value="_profile.Email" />
+                <label for="email">E-Mail</label>
+                <InputText id="email" class="form-control" @bind-Value="_profile.Email" />
             </div>
         </div>
 
         <div class="form-group">
-            <label>Anschrift</label>
-            <InputTextArea class="form-control" rows="3" @bind-Value="_profile.Address" />
+            <label for="address">Anschrift</label>
+            <InputTextArea id="address" class="form-control" rows="3" @bind-Value="_profile.Address" />
         </div>
 
         <div class="row">
             <div class="form-group col-md-4">
-                <label>Telefon</label>
-                <InputText class="form-control" @bind-Value="_profile.Phone" />
+                <label for="phone">Telefon</label>
+                <InputText id="phone" class="form-control" @bind-Value="_profile.Phone" />
             </div>
             <div class="form-group col-md-4">
-                <label>Steuernummer</label>
-                <InputText class="form-control" @bind-Value="_profile.Steuernummer" />
+                <label for="steuernummer">Steuernummer</label>
+                <InputText id="steuernummer" class="form-control" @bind-Value="_profile.Steuernummer" />
             </div>
             <div class="form-group col-md-4">
-                <label>Nummernformat</label>
-                <InputText class="form-control" @bind-Value="_profile.NumberFormat" />
+                <label for="numberFormat">Nummernformat</label>
+                <InputText id="numberFormat" class="form-control" @bind-Value="_profile.NumberFormat" />
             </div>
         </div>
 
         <div class="row">
             <div class="form-group col-md-5">
-                <label>IBAN</label>
-                <InputText class="form-control" @bind-Value="_profile.Iban" />
+                <label for="iban">IBAN</label>
+                <InputText id="iban" class="form-control" @bind-Value="_profile.Iban" />
             </div>
             <div class="form-group col-md-3">
-                <label>BIC</label>
-                <InputText class="form-control" @bind-Value="_profile.Bic" />
+                <label for="bic">BIC</label>
+                <InputText id="bic" class="form-control" @bind-Value="_profile.Bic" />
             </div>
             <div class="form-group col-md-4">
-                <label>Bank</label>
-                <InputText class="form-control" @bind-Value="_profile.BankName" />
+                <label for="bankName">Bank</label>
+                <InputText id="bankName" class="form-control" @bind-Value="_profile.BankName" />
             </div>
         </div>
 
@@ -92,6 +102,31 @@ else
 
 <section class="panel">
 <div class="panel-head">
+    <h2 class="underlined">Nachweise für das Finanzamt</h2>
+    <span class="panel-note">GoBD</span>
+</div>
+
+<p>
+    Die GoBD verlangen eine <strong>Verfahrensdokumentation</strong>: eine schriftliche
+    Beschreibung, wie Ihre Rechnungen entstehen, nummeriert, festgeschrieben, archiviert
+    und gesichert werden. Fehlt sie, ist das bei einer Betriebsprüfung einer der
+    häufigsten Beanstandungspunkte.
+</p>
+<p>
+    TreizeInvoice erzeugt dieses Dokument auf Knopfdruck aus dem tatsächlichen Zustand
+    Ihrer Installation — mit Ihrem Nummernkreis, Ihren Beständen und dem Zeitraum Ihres
+    Prüfprotokolls. Erstellen Sie es neu, wenn sich etwas Wesentliches ändert, und
+    bewahren Sie ältere Fassungen zusammen mit Ihren Buchführungsunterlagen auf.
+</p>
+
+<div class="doc-actions">
+    <a class="btn btn-primary" href="/app/verfahrensdokumentation">Verfahrensdokumentation als PDF</a>
+    <a class="btn btn-outline-primary" href="/app/sicherung">Sicherung herunterladen</a>
+</div>
+</section>
+
+<section class="panel">
+<div class="panel-head">
     <h2 class="underlined">Passwort ändern</h2>
 </div>
 
@@ -105,18 +140,18 @@ else
 
     <div class="row">
         <div class="form-group col-md-4">
-            <label>Aktuelles Passwort</label>
-            <InputText type="password" class="form-control" @bind-Value="_pwd.Current" />
+            <label for="pwdCurrent">Aktuelles Passwort</label>
+            <InputText id="pwdCurrent" type="password" autocomplete="current-password" class="form-control" @bind-Value="_pwd.Current" />
             <ValidationMessage For="() => _pwd.Current" />
         </div>
         <div class="form-group col-md-4">
-            <label>Neues Passwort</label>
-            <InputText type="password" class="form-control" @bind-Value="_pwd.New" />
+            <label for="pwdNew">Neues Passwort</label>
+            <InputText id="pwdNew" type="password" autocomplete="new-password" class="form-control" @bind-Value="_pwd.New" />
             <ValidationMessage For="() => _pwd.New" />
         </div>
         <div class="form-group col-md-4">
-            <label>Bestätigen</label>
-            <InputText type="password" class="form-control" @bind-Value="_pwd.Confirm" />
+            <label for="pwdConfirm">Bestätigen</label>
+            <InputText id="pwdConfirm" type="password" autocomplete="new-password" class="form-control" @bind-Value="_pwd.Confirm" />
             <ValidationMessage For="() => _pwd.Confirm" />
         </div>
     </div>
@@ -128,6 +163,9 @@ else
 @code {
     private BusinessProfile? _profile;
     private bool _profileSaved;
+
+    private List<string> ProfileProblems =>
+        _profile is null ? new List<string>() : ProfileValidation.Check(_profile);
 
     private readonly PasswordModel _pwd = new();
     private string? _pwdMessage;

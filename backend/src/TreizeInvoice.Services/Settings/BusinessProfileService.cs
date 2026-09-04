@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TreizeInvoice.Data;
 using TreizeInvoice.Domain.Entities;
+using TreizeInvoice.Services.Invoicing;
 
 namespace TreizeInvoice.Services.Settings;
 
@@ -33,6 +34,9 @@ public class BusinessProfileService : IBusinessProfileService
 
     public async Task SaveAsync(BusinessProfile profile)
     {
+        // « De243… » saisi au clavier reste un IBAN valide une fois normalisé.
+        profile.Iban = ProfileValidation.NormaliseIban(profile.Iban);
+
         _db.BusinessProfiles.Update(profile);
         await _db.SaveChangesAsync();
     }
