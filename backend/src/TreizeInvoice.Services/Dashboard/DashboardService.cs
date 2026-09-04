@@ -13,7 +13,6 @@ public record StatusCount(InvoiceStatus Status, int Count);
 
 public record DashboardSummary(
     int Year,
-    string OwnerName,
     bool ProfileComplete,
     decimal Invoiced,
     decimal Collected,
@@ -119,7 +118,6 @@ public class DashboardService : IDashboardService
 
         return new DashboardSummary(
             year,
-            string.IsNullOrWhiteSpace(profile?.FullName) ? "" : profile!.FullName,
             IsComplete(profile),
             invoiced,
             journal.Where(e => e.Type == JournalEntryType.Recette).Sum(e => e.Amount),

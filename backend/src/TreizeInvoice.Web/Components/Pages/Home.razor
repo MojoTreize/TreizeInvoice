@@ -14,7 +14,7 @@ else
 {
     <div class="page-head">
         <div>
-            <h1 class="greeting underlined">Guten Tag @FirstName,</h1>
+            <h1 class="greeting underlined">Übersicht</h1>
             <p class="greeting-sub">So steht Ihr Unternehmen heute da.</p>
         </div>
         <div class="page-actions">
@@ -265,11 +265,6 @@ else
     private string? _error;
     private string? _success;
     private int _overdueCount;
-
-    private string FirstName =>
-        string.IsNullOrWhiteSpace(_summary?.OwnerName)
-            ? ""
-            : _summary!.OwnerName.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
 
     protected override async Task OnInitializedAsync() => await Load();
 
