@@ -1,6 +1,6 @@
 @page "/app/clients"
 @attribute [Authorize]
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject IClientService ClientService
 @inject NavigationManager Nav
 
@@ -23,7 +23,7 @@
 else if (_clients.Count == 0)
 {
     <div class="alert alert-secondary">
-        Aucun client @(string.IsNullOrWhiteSpace(_search) ? "" : "pour cette recherche").
+        @(string.IsNullOrWhiteSpace(_search) ? "Aucun client." : "Aucun client pour cette recherche.")
     </div>
 }
 else

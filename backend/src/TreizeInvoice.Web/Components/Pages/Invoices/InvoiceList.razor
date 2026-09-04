@@ -1,6 +1,6 @@
 @page "/app/factures"
 @attribute [Authorize]
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject IInvoiceService InvoiceService
 @inject NavigationManager Nav
 
