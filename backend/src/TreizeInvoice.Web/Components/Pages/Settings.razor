@@ -32,6 +32,16 @@ else
             <div class="alert alert-success" role="alert">Angaben gespeichert.</div>
         }
 
+        @if (ProfileProblems.Count > 0)
+        {
+            <div class="alert alert-warning" role="alert">
+                <strong>Diese Angaben fehlen für eine gültige Rechnung:</strong>
+                @string.Join(", ", ProfileProblems).
+                Ohne sie lässt sich keine Rechnung ausstellen — § 14 Abs. 4 UStG verlangt
+                die vollständige Anschrift, und ohne korrekte IBAN kann niemand zahlen.
+            </div>
+        }
+
         <div class="row">
             <div class="form-group col-md-6">
                 <label for="fullName">Name / Firma</label>
@@ -153,6 +163,9 @@ else
 @code {
     private BusinessProfile? _profile;
     private bool _profileSaved;
+
+    private List<string> ProfileProblems =>
+        _profile is null ? new List<string>() : ProfileValidation.Check(_profile);
 
     private readonly PasswordModel _pwd = new();
     private string? _pwdMessage;

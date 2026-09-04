@@ -112,7 +112,7 @@ public class InvoiceSearchTests
         db.Context.BusinessProfiles.Add(new BusinessProfile
         {
             FullName = "Mimi Sagno",
-            Address = "Weg 3",
+            Address = "Weg 3\n44805 Bochum",
             Steuernummer = "013/456/78901",
             Iban = "DE02120300000000202051",
             Bic = "BYLADEM1001",

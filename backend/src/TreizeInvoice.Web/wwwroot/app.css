@@ -328,6 +328,55 @@ th.text-end {
     gap: .4rem;
 }
 
+/* ---------- Confirmation ---------- */
+.dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(31, 46, 69, .45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.2rem;
+}
+
+.dialog-box {
+    background: var(--paper, #fff);
+    border: 2px solid var(--ink);
+    border-radius: var(--radius);
+    box-shadow: 10px 10px 0 rgba(31, 46, 69, .22);
+    padding: 1.4rem 1.5rem 1.2rem;
+    max-width: 34rem;
+    width: 100%;
+    max-height: calc(100vh - 2.4rem);
+    overflow-y: auto;
+}
+
+.dialog-box.danger {
+    border-color: #A8531F;
+}
+
+.dialog-box h2 {
+    margin: 0 0 .7rem;
+    font-size: 1.15rem;
+}
+
+.dialog-body {
+    font-size: .92rem;
+    color: var(--ink-soft);
+}
+
+.dialog-body p {
+    margin-bottom: .5rem;
+}
+
+.dialog-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: 1.2rem;
+}
+
 /* ---------- Choix du statut à l'enregistrement ---------- */
 .save-as {
     margin-top: 1.6rem;

@@ -192,17 +192,6 @@ public class InvoicePaymentAndStornoTests
     }
 
     [Fact]
-    public async Task Cancel_UneFacturePayee_EstRefuse()
-    {
-        using var db = new TestDb();
-        var (service, issued) = await IssuedInvoiceAsync(db);
-        await service.MarkAsPaidAsync(issued.Id);
-
-        var ex = await Assert.ThrowsAsync<DomainException>(() => service.CancelAsync(issued.Id));
-        Assert.Contains("vereinnahmt", ex.Message);
-    }
-
-    [Fact]
     public async Task Cancel_LaissePossibleUneNouvelleFactureCorrigee()
     {
         using var db = new TestDb();
@@ -284,5 +273,82 @@ public class InvoicePaymentAndStornoTests
         await Assert.ThrowsAsync<DomainException>(() => service.CorrectAsync(issued.Id));
 
         Assert.Equal(before, db.Context.Invoices.Count());
+    }
+
+    // --- Storno d'une facture déjà encaissée ---
+    // Cas réel : la cliente a payé, l'erreur est découverte, on rembourse.
+
+    [Fact]
+    public async Task Cancel_SurUneFacturePayee_EstAutorise()
+    {
+        using var db = new TestDb();
+        var (service, issued) = await IssuedInvoiceAsync(db);
+        await service.MarkAsPaidAsync(issued.Id);
+
+        var storno = await service.CancelAsync(issued.Id);
+
+        var original = await service.GetAsync(issued.Id);
+        Assert.Equal(InvoiceStatus.Cancelled, original!.Status);
+        Assert.Equal(storno.Id, original.CancelledByInvoiceId);
+        Assert.Equal(-issued.Total, storno.Total);
+    }
+
+    [Fact]
+    public async Task Cancel_SurUneFacturePayee_NeutraliseLaRecetteAuJournal()
+    {
+        using var db = new TestDb();
+        var (service, issued) = await IssuedInvoiceAsync(db);
+        await service.MarkAsPaidAsync(issued.Id);
+
+        // SQLite ne sait pas agréger des decimal : on ramène puis on somme en mémoire.
+        var apresPaiement = db.Context.JournalEntries
+            .Where(e => e.Type == JournalEntryType.Recette)
+            .ToList().Sum(e => e.Amount);
+        Assert.Equal(issued.Total, apresPaiement);
+
+        await service.CancelAsync(issued.Id);
+
+        // La recette d'origine reste en base (GoBD) ; c'est la contre-écriture qui l'annule.
+        Assert.Equal(2, db.Context.JournalEntries.Count());
+        Assert.Equal(0m, db.Context.JournalEntries
+            .Where(e => e.Type == JournalEntryType.Recette)
+            .ToList().Sum(e => e.Amount));
+    }
+
+    [Fact]
+    public async Task Cancel_SurUneFactureNonPayee_NeCreeAucuneContreEcriture()
+    {
+        using var db = new TestDb();
+        var (service, issued) = await IssuedInvoiceAsync(db);
+
+        await service.CancelAsync(issued.Id);
+
+        Assert.Empty(db.Context.JournalEntries);
+    }
+
+    [Fact]
+    public async Task Correct_SurUneFacturePayee_RendUnBrouillonEtSoldeLeJournal()
+    {
+        using var db = new TestDb();
+        var (service, issued) = await IssuedInvoiceAsync(db);
+        await service.MarkAsPaidAsync(issued.Id);
+
+        var draft = await service.CorrectAsync(issued.Id);
+
+        Assert.Equal(InvoiceStatus.Draft, draft.Status);
+        Assert.Equal(issued.Total, draft.Total);
+        Assert.Equal(0m, db.Context.JournalEntries
+            .Where(e => e.Type == JournalEntryType.Recette)
+            .ToList().Sum(e => e.Amount));
+    }
+
+    [Fact]
+    public async Task MarkAsPaid_SurUneFactureStornee_EstRefuse()
+    {
+        using var db = new TestDb();
+        var (service, issued) = await IssuedInvoiceAsync(db);
+        await service.CancelAsync(issued.Id);
+
+        await Assert.ThrowsAsync<DomainException>(() => service.MarkAsPaidAsync(issued.Id));
     }
 }

@@ -231,19 +231,8 @@ else
     private Client? SelectedClient => _clients?.FirstOrDefault(c => c.Id == _invoice?.ClientId);
 
     /// <summary>Mêmes exigences que le contrôle à l'émission, mais signalées dès la saisie.</summary>
-    private List<string> MissingProfileFields
-    {
-        get
-        {
-            var missing = new List<string>();
-            if (_profile is null) return missing;
-            if (string.IsNullOrWhiteSpace(_profile.FullName)) missing.Add("Name");
-            if (string.IsNullOrWhiteSpace(_profile.Address)) missing.Add("Anschrift");
-            if (string.IsNullOrWhiteSpace(_profile.Steuernummer)) missing.Add("Steuernummer");
-            if (string.IsNullOrWhiteSpace(_profile.Iban)) missing.Add("IBAN");
-            return missing;
-        }
-    }
+    private List<string> MissingProfileFields =>
+        _profile is null ? new List<string>() : ProfileValidation.Check(_profile);
 
     private string SaveLabel => _saveAs switch
     {

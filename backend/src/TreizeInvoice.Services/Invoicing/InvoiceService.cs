@@ -288,11 +288,6 @@ public class InvoiceService : IInvoiceService
             throw new DomainException(
                 $"Rechnung {original.InvoiceNumber} ist bereits storniert.");
 
-        if (original.Status == InvoiceStatus.Paid)
-            throw new DomainException(
-                $"Rechnung {original.InvoiceNumber} ist bereits vereinnahmt. " +
-                "Bitte klären Sie die Stornierung vorab mit Ihrer Steuerberatung.");
-
         // Sans ce garde-fou, on pourrait enchainer des storno de storno à l'infini.
         if (original.CancelsInvoiceId is not null)
             throw new DomainException(
@@ -332,6 +327,22 @@ public class InvoiceService : IInvoiceService
             await _db.SaveChangesAsync();
 
             await IssueCoreAsync(storno, profile);
+
+            // Une facture déjà encaissée a produit une recette au journal. On ne la
+            // supprime pas (GoBD) : on la neutralise par une contre-écriture, sinon
+            // l'EÜR continuerait de compter un encaissement qui a été remboursé.
+            if (original.Status == InvoiceStatus.Paid)
+            {
+                _db.JournalEntries.Add(new JournalEntry
+                {
+                    Date = DateOnly.FromDateTime(DateTime.Today),
+                    Type = JournalEntryType.Recette,
+                    Amount = -original.Total,
+                    Description = $"Storno zu Rechnung {original.InvoiceNumber} — {original.Client.Name}",
+                    Category = "Umsatz",
+                    InvoiceId = storno.Id
+                });
+            }
 
             original.Status = InvoiceStatus.Cancelled;
             original.CancelledByInvoiceId = storno.Id;
@@ -416,11 +427,7 @@ public class InvoiceService : IInvoiceService
     /// <summary>Mentions obligatoires §14 UStG côté émettrice.</summary>
     private static void EnsureProfileComplete(BusinessProfile profile)
     {
-        var missing = new List<string>();
-        if (string.IsNullOrWhiteSpace(profile.FullName)) missing.Add("Name");
-        if (string.IsNullOrWhiteSpace(profile.Address)) missing.Add("Anschrift");
-        if (string.IsNullOrWhiteSpace(profile.Steuernummer)) missing.Add("Steuernummer");
-        if (string.IsNullOrWhiteSpace(profile.Iban)) missing.Add("IBAN");
+        var missing = ProfileValidation.Check(profile);
 
         if (missing.Count > 0)
             throw new DomainException(

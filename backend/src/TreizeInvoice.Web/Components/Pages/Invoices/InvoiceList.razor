@@ -122,11 +122,16 @@ else
                         }
                         else
                         {
-                            <a class="btn btn-sm" href="@($"/app/rechnungen/{inv.Id}/pdf")" target="_blank">PDF</a>
+                            @* Le PDF est servi en pièce jointe : dans un nouvel onglet, celui-ci
+                               s'ouvre puis se referme aussitôt et le clic paraît sans effet. *@
+                            <a class="btn btn-sm" href="@($"/app/rechnungen/{inv.Id}/pdf")" download>PDF</a>
                         }
                         @if (inv.Status == InvoiceStatus.Issued && inv.CancelsInvoiceId is null)
                         {
                             <button class="btn btn-sm btn-success" @onclick="() => MarkPaidAsync(inv.Id)">Als bezahlt</button>
+                        }
+                        @if (inv.Status is InvoiceStatus.Issued or InvoiceStatus.Paid && inv.CancelsInvoiceId is null)
+                        {
                             <button class="btn btn-sm btn-outline-primary" @onclick="() => _pendingCorrect = inv">Korrigieren</button>
                             <button class="btn btn-sm btn-outline-warning" @onclick="() => _pendingCancel = inv">Stornieren</button>
                         }
@@ -158,60 +163,77 @@ else
 
 @if (_pendingCorrect is not null)
 {
-    <div class="alert alert-warning">
-        <p class="mb-2">
-            <strong>Rechnung @_pendingCorrect.InvoiceNumber korrigieren?</strong><br />
-            Eine gestellte Rechnung lässt sich nicht bearbeiten — das verlangen die
-            GoBD. TreizeInvoice erledigt die zulässige Korrektur in einem Schritt:
-            es wird eine Stornorechnung erstellt und anschließend ein neuer Entwurf
-            mit denselben Positionen geöffnet, den Sie berichtigen und neu ausstellen.
+    <ConfirmDialog Title="@($"Rechnung {_pendingCorrect.InvoiceNumber} korrigieren?")"
+                   ConfirmLabel="Stornieren und neu erfassen"
+                   BusyLabel="Wird vorbereitet…"
+                   Busy="_working"
+                   OnConfirm="ConfirmCorrectAsync"
+                   OnCancel="() => _pendingCorrect = null">
+        <p>
+            Eine gestellte Rechnung lässt sich nicht bearbeiten — das verlangen die GoBD.
+            TreizeInvoice erledigt die zulässige Korrektur in einem Schritt: es wird eine
+            Stornorechnung erstellt und anschließend ein neuer Entwurf mit denselben
+            Positionen geöffnet, den Sie berichtigen und neu ausstellen.
         </p>
-        <button class="btn btn-sm btn-primary" @onclick="ConfirmCorrectAsync" disabled="@_working">
-            @(_working ? "Wird vorbereitet…" : "Stornieren und neu erfassen")
-        </button>
-        <button class="btn btn-sm" @onclick="() => _pendingCorrect = null">Abbrechen</button>
-    </div>
+        @if (_pendingCorrect.Status == InvoiceStatus.Paid)
+        {
+            <p>
+                Diese Rechnung ist bereits bezahlt. Die Einnahme wird im Journal durch eine
+                Gegenbuchung ausgeglichen — die Erstattung an Ihre Kundin oder Ihren Kunden
+                veranlassen Sie selbst.
+            </p>
+        }
+    </ConfirmDialog>
 }
 
 @if (_pendingIssue is not null)
 {
-    <div class="alert alert-warning">
-        <p class="mb-2">
-            <strong>Rechnung endgültig ausstellen?</strong><br />
+    <ConfirmDialog Title="Rechnung endgültig ausstellen?"
+                   ConfirmLabel="Ausstellen"
+                   BusyLabel="Wird ausgestellt…"
+                   Busy="_issuing"
+                   OnConfirm="ConfirmIssueAsync"
+                   OnCancel="() => _pendingIssue = null">
+        <p>
             Sie erhält eine Rechnungsnummer und das PDF wird archiviert. Nach den
             GoBD-Grundsätzen kann sie danach weder geändert noch gelöscht werden —
             eine Korrektur ist nur über eine Stornorechnung möglich.
         </p>
-        <button class="btn btn-sm btn-success" @onclick="ConfirmIssueAsync" disabled="@_issuing">
-            @(_issuing ? "Wird ausgestellt…" : "Ausstellen")
-        </button>
-        <button class="btn btn-sm" @onclick="() => _pendingIssue = null">Abbrechen</button>
-    </div>
+    </ConfirmDialog>
 }
 
 @if (_pendingCancel is not null)
 {
-    <div class="alert alert-warning">
-        <p class="mb-2">
-            <strong>Rechnung @_pendingCancel.InvoiceNumber stornieren?</strong><br />
-            Es wird eine Stornorechnung mit negativen Beträgen und eigener Nummer
-            erstellt. Die Ursprungsrechnung wird als storniert gekennzeichnet.
-            Anschließend können Sie eine korrigierte Rechnung stellen.
+    <ConfirmDialog Title="@($"Rechnung {_pendingCancel.InvoiceNumber} stornieren?")"
+                   ConfirmLabel="Storno erstellen"
+                   BusyLabel="Wird storniert…"
+                   Busy="_working"
+                   OnConfirm="ConfirmCancelAsync"
+                   OnCancel="() => _pendingCancel = null">
+        <p>
+            Es wird eine Stornorechnung mit negativen Beträgen und eigener Nummer erstellt.
+            Die Ursprungsrechnung wird als storniert gekennzeichnet.
         </p>
-        <button class="btn btn-sm btn-outline-warning" @onclick="ConfirmCancelAsync" disabled="@_working">
-            @(_working ? "Wird storniert…" : "Storno erstellen")
-        </button>
-        <button class="btn btn-sm" @onclick="() => _pendingCancel = null">Zurück</button>
-    </div>
+        @if (_pendingCancel.Status == InvoiceStatus.Paid)
+        {
+            <p>
+                Diese Rechnung ist bereits bezahlt. Die Einnahme wird im Journal durch eine
+                Gegenbuchung ausgeglichen — die Erstattung veranlassen Sie selbst.
+            </p>
+        }
+    </ConfirmDialog>
 }
 
 @if (_pendingDelete is not null)
 {
-    <div class="alert alert-warning">
-        <p>Diesen Entwurf endgültig löschen?</p>
-        <button class="btn btn-sm btn-danger" @onclick="ConfirmDeleteAsync">Löschen</button>
-        <button class="btn btn-sm" @onclick="() => _pendingDelete = null">Abbrechen</button>
-    </div>
+    <ConfirmDialog Title="Diesen Entwurf endgültig löschen?"
+                   ConfirmLabel="Löschen"
+                   Danger="true"
+                   OnConfirm="ConfirmDeleteAsync"
+                   OnCancel="() => _pendingDelete = null">
+        <p>Ein Entwurf hat keine Rechnungsnummer und keine rechtliche Wirkung. Er lässt sich
+           daher gefahrlos löschen — rückgängig machen können Sie es aber nicht.</p>
+    </ConfirmDialog>
 }
 
 @code {

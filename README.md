@@ -111,6 +111,22 @@ Une facture émise ne se modifie pas (GoBD). `Korrigieren` enchaîne la seule co
 licite : Stornorechnung, puis nouveau brouillon reprenant les lignes, à rectifier et
 réémettre. Les deux pièces d'origine restent en base.
 
+Le storno reste possible sur une facture **déjà payée** : cliente qui a réglé, erreur
+découverte, remboursement. La recette portée au journal n'est pas supprimée (GoBD) mais
+neutralisée par une contre-écriture rattachée au storno, sinon l'EÜR continuerait de
+compter un encaissement remboursé.
+
+Les confirmations d'action s'affichent dans une boîte centrée (`ConfirmDialog`). Rendues
+en bas de page, elles tombaient sous la ligne de flottaison : le clic sur « Ausstellen »
+semblait sans effet.
+
+## Contrôle des coordonnées de l'émettrice
+`ProfileValidation` vérifie la forme, pas seulement la présence : une adresse sans code
+postal ni ville ne satisfait pas §14 Abs. 4 Nr. 1 UStG, et un IBAN tronqué rend la facture
+impayable. L'IBAN est contrôlé par sa longueur nationale et le modulo 97 de la norme
+ISO 13616. Les manques s'affichent dans les Einstellungen et dans l'aperçu de saisie, et
+bloquent l'émission.
+
 ## Aperçu du document pendant la saisie
 `Neue Rechnung` affiche à droite le document tel qu'il sera archivé, mis à jour à la
 frappe : destinataire, mentions §14, ligne §19, échéance calculée, coordonnées bancaires.
