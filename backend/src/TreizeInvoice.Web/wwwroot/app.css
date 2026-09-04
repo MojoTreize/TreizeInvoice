@@ -233,6 +233,20 @@ th.text-end {
     text-decoration: underline;
 }
 
+/* Bloc « Nachweise für das Finanzamt » : texte explicatif puis boutons. */
+.panel > p {
+    max-width: 78ch;
+    margin-bottom: .7rem;
+    color: var(--ink-soft);
+}
+
+.doc-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .7rem;
+    margin-top: 1.1rem;
+}
+
 .panel-grid {
     display: grid;
     grid-template-columns: 1.55fr 1fr;

@@ -102,6 +102,24 @@ contenant la base et tous les PDF archivés. L'instantané de la base est pris a
 écritures encore en journal.
 Conservez ces archives **hors de la machine** (les obligations GoBD portent sur 10 ans).
 
+## Verfahrensdokumentation
+Les GoBD (Rz. 151 ss.) exigent une description écrite du procédé : comment les pièces
+naissent, sont numérotées, verrouillées, archivées et sauvegardées. Son absence est un
+des reproches les plus fréquents en contrôle fiscal, et aucun outil grand public ne la
+génère automatiquement.
+
+`Einstellungen → Nachweise für das Finanzamt` produit ce document en PDF allemand
+(`GET /app/verfahrensdokumentation`). Ce n'est pas un texte type : `CollectAsync` lit
+l'état réel de l'installation — profil, format de numérotation, chemins de la base et
+de l'archive, plages de numéros réellement attribuées par année, ventilation des
+statuts, volumétrie du journal et période couverte par le journal d'audit.
+
+La collecte des faits est séparée du rendu (`VerfahrensdokumentationFacts`) afin d'être
+testable sans ouvrir un PDF (voir `VerfahrensdokumentationTests`).
+
+Le document est à régénérer à chaque changement notable du procédé ; les versions
+antérieures doivent être conservées avec les pièces comptables.
+
 ## Déploiement (landing et application séparées)
 
 La landing et l'application sont déployées indépendamment. Elles ne communiquent pas :
@@ -192,3 +210,4 @@ dotnet test tests/TreizeInvoice.Tests
 - [x] Bloc 5 — journal recettes/dépenses + export CSV (EÜR)
 - [x] Bloc 6 — tableau de bord + sauvegarde manuelle
   (hébergement de la landing page : à arbitrer)
+- [x] Verfahrensdokumentation GoBD générée à partir des données réelles
