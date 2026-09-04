@@ -68,7 +68,7 @@ public class InvoiceService : IInvoiceService
         var existing = await _db.Invoices
             .Include(i => i.Items)
             .FirstOrDefaultAsync(i => i.Id == draft.Id)
-            ?? throw new DomainException("Facture introuvable.");
+            ?? throw new DomainException("Rechnung nicht gefunden.");
 
         EnsureDraft(existing);
 
@@ -104,7 +104,7 @@ public class InvoiceService : IInvoiceService
             .IgnoreQueryFilters()
             .Include(i => i.Items)
             .FirstOrDefaultAsync(i => i.Id == id)
-            ?? throw new DomainException("Facture introuvable.");
+            ?? throw new DomainException("Rechnung nicht gefunden.");
 
         var copy = new Invoice
         {
@@ -134,7 +134,7 @@ public class InvoiceService : IInvoiceService
             .Include(i => i.Client)
             .Include(i => i.CancelsInvoice)
             .FirstOrDefaultAsync(i => i.Id == id)
-            ?? throw new DomainException("Facture introuvable.");
+            ?? throw new DomainException("Rechnung nicht gefunden.");
 
         EnsureDraft(invoice);
         EnsureIssuable(invoice);
@@ -169,7 +169,7 @@ public class InvoiceService : IInvoiceService
             .Include(i => i.Items)
             .Include(i => i.Client)
             .FirstOrDefaultAsync(i => i.Id == id)
-            ?? throw new DomainException("Facture introuvable.");
+            ?? throw new DomainException("Rechnung nicht gefunden.");
 
         if (invoice.Status != InvoiceStatus.Issued)
             throw new DomainException(
@@ -205,7 +205,7 @@ public class InvoiceService : IInvoiceService
             .Include(i => i.Items)
             .Include(i => i.Client)
             .FirstOrDefaultAsync(i => i.Id == id)
-            ?? throw new DomainException("Facture introuvable.");
+            ?? throw new DomainException("Rechnung nicht gefunden.");
 
         if (original.Status == InvoiceStatus.Draft)
             throw new DomainException(

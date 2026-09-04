@@ -93,7 +93,7 @@ else
 {
     <div class="alert alert-warning">
         <p class="mb-2">
-            <strong>Rechnung endgültig ausstellen ?</strong><br />
+            <strong>Rechnung endgültig ausstellen?</strong><br />
             Sie erhält eine Rechnungsnummer und das PDF wird archiviert. Nach den
             GoBD-Grundsätzen kann sie danach weder geändert noch gelöscht werden —
             eine Korrektur ist nur über eine Stornorechnung möglich.
@@ -109,7 +109,7 @@ else
 {
     <div class="alert alert-warning">
         <p class="mb-2">
-            <strong>Rechnung @_pendingCancel.InvoiceNumber stornieren ?</strong><br />
+            <strong>Rechnung @_pendingCancel.InvoiceNumber stornieren?</strong><br />
             Es wird eine Stornorechnung mit negativen Beträgen und eigener Nummer
             erstellt. Die Ursprungsrechnung wird als storniert gekennzeichnet.
             Anschließend können Sie eine korrigierte Rechnung stellen.
@@ -124,7 +124,7 @@ else
 @if (_pendingDelete is not null)
 {
     <div class="alert alert-warning">
-        <p>Diesen Entwurf endgültig löschen ?</p>
+        <p>Diesen Entwurf endgültig löschen?</p>
         <button class="btn btn-sm btn-danger" @onclick="ConfirmDeleteAsync">Löschen</button>
         <button class="btn btn-sm" @onclick="() => _pendingDelete = null">Abbrechen</button>
     </div>

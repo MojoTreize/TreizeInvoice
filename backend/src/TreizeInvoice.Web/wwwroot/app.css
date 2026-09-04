@@ -213,6 +213,7 @@ th.text-end {
     align-items: baseline;
     justify-content: space-between;
     gap: 1rem;
+    flex-wrap: wrap;
     margin-bottom: 1.1rem;
 }
 
@@ -948,6 +949,13 @@ label {
     min-width: 0;
 }
 
+/* Un tableau large défile dans son panneau plutôt que d'élargir la page. La règle
+   ne peut pas être réservée aux petits écrans : le journal a sept colonnes et
+   débordait déjà en 900–1000 px, largeur d'un portable courant. */
+.panel {
+    overflow-x: auto;
+}
+
 @media (max-width: 1250px) {
     .kpi-grid { grid-template-columns: repeat(2, 1fr); }
 }
@@ -960,8 +968,8 @@ label {
 }
 
 @media (max-width: 900px) {
-    /* Les tableaux larges d\u00e9filent dans leur panneau plut\u00f4t que d'\u00e9largir la page. */
-    .panel { overflow-x: auto; }    .kpi-grid.cols-3 { grid-template-columns: repeat(2, 1fr); }    .chart { grid-template-columns: 40px 1fr; }
+    .kpi-grid.cols-3 { grid-template-columns: repeat(2, 1fr); }
+    .chart { grid-template-columns: 40px 1fr; }
     .chart-yaxis, .chart-axis { font-size: .6rem; }
     .chart svg { height: 150px; }
     .page-head { gap: .8rem; }

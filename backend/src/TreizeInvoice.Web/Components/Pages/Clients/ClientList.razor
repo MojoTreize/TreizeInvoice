@@ -17,7 +17,8 @@
 
 <section class="panel">
 <div class="mb-3">
-    <input class="form-control" placeholder="Suchen (Name, Ansprechpartner, E-Mail)…"
+    <input class="form-control" type="search" aria-label="Kunden durchsuchen"
+           placeholder="Suchen (Name, Ansprechpartner, E-Mail)…"
            value="@_search" @oninput="OnSearchInput" />
 </div>
 
@@ -66,7 +67,7 @@ else
 {
     <div class="alert alert-warning">
         <p>
-            <strong>@_pendingDelete.Name</strong> löschen ?
+            <strong>@_pendingDelete.Name</strong> löschen?
             @if (_pendingDeleteInvoices > 0)
             {
                 <span>

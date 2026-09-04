@@ -36,8 +36,8 @@ else
 
         <div class="row">
             <div class="form-group col-md-6">
-                <label>Kunde *</label>
-                <InputSelect class="form-select" @bind-Value="_invoice.ClientId">
+                <label for="invClient">Kunde *</label>
+                <InputSelect id="invClient" class="form-select" @bind-Value="_invoice.ClientId">
                     <option value="0">— Kunde wählen —</option>
                     @foreach (var c in _clients)
                     {
@@ -47,24 +47,24 @@ else
                 <ValidationMessage For="() => _invoice.ClientId" />
             </div>
             <div class="form-group col-md-3">
-                <label>Rechnungsdatum *</label>
-                <InputDate class="form-control" @bind-Value="_invoice.InvoiceDate" />
+                <label for="invDate">Rechnungsdatum *</label>
+                <InputDate id="invDate" class="form-control" @bind-Value="_invoice.InvoiceDate" />
             </div>
             <div class="form-group col-md-3">
-                <label>Zahlungsziel (Tage)</label>
-                <InputNumber class="form-control" @bind-Value="_invoice.PaymentTermDays" />
+                <label for="invTerm">Zahlungsziel (Tage)</label>
+                <InputNumber id="invTerm" class="form-control" @bind-Value="_invoice.PaymentTermDays" />
                 <ValidationMessage For="() => _invoice.PaymentTermDays" />
             </div>
         </div>
 
         <div class="row">
             <div class="form-group col-md-4">
-                <label>Leistungsdatum</label>
-                <InputDate class="form-control" @bind-Value="_invoice.ServiceDate" />
+                <label for="invService">Leistungsdatum</label>
+                <InputDate id="invService" class="form-control" @bind-Value="_invoice.ServiceDate" />
             </div>
             <div class="form-group col-md-8">
-                <label>Leistungszeitraum (Freitext)</label>
-                <InputText class="form-control" @bind-Value="_invoice.ServicePeriod"
+                <label for="invPeriod">Leistungszeitraum (Freitext)</label>
+                <InputText id="invPeriod" class="form-control" @bind-Value="_invoice.ServicePeriod"
                            placeholder="z. B. 01.03.2026 – 31.03.2026" />
             </div>
         </div>
@@ -92,19 +92,20 @@ else
                     {
                         <tr @key="item">
                             <td>
-                                <InputText class="form-control" @bind-Value="item.Description" />
+                                <InputText class="form-control" aria-label="Beschreibung der Position" @bind-Value="item.Description" />
                             </td>
                             <td>
-                                <InputNumber class="form-control text-end" @bind-Value="item.Quantity"
+                                <InputNumber class="form-control text-end" aria-label="Menge" @bind-Value="item.Quantity"
                                              @bind-Value:after="StateHasChanged" />
                             </td>
                             <td>
-                                <InputNumber class="form-control text-end" @bind-Value="item.UnitPrice"
+                                <InputNumber class="form-control text-end" aria-label="Einzelpreis in Euro" @bind-Value="item.UnitPrice"
                                              @bind-Value:after="StateHasChanged" />
                             </td>
                             <td class="text-end">@item.LineTotal.ToString("N2") €</td>
                             <td class="text-end">
                                 <button type="button" class="btn btn-sm btn-outline-danger"
+                                        title="Position entfernen" aria-label="Position entfernen"
                                         @onclick="() => RemoveItem(item)">✕</button>
                             </td>
                         </tr>
@@ -123,8 +124,8 @@ else
         <button type="button" class="btn btn-outline-primary btn-sm" @onclick="AddItem">+ Position hinzufügen</button>
 
         <div class="form-group mt-4">
-            <label>Anmerkungen</label>
-            <InputTextArea class="form-control" rows="2" @bind-Value="_invoice.Notes" />
+            <label for="invNotes">Anmerkungen</label>
+            <InputTextArea id="invNotes" class="form-control" rows="2" @bind-Value="_invoice.Notes" />
         </div>
 
         <div class="mt-3">

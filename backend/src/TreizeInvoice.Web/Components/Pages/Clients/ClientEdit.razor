@@ -21,36 +21,36 @@ else
 
         <div class="row">
             <div class="form-group col-md-6">
-                <label>Name / Firma *</label>
-                <InputText class="form-control" @bind-Value="_client.Name" />
+                <label for="clientName">Name / Firma *</label>
+                <InputText id="clientName" class="form-control" @bind-Value="_client.Name" />
                 <ValidationMessage For="() => _client.Name" />
             </div>
             <div class="form-group col-md-6">
-                <label>Ansprechpartner</label>
-                <InputText class="form-control" @bind-Value="_client.ContactPerson" />
+                <label for="clientContact">Ansprechpartner</label>
+                <InputText id="clientContact" class="form-control" @bind-Value="_client.ContactPerson" />
             </div>
         </div>
 
         <div class="form-group">
-            <label>Anschrift</label>
-            <InputTextArea class="form-control" rows="3" @bind-Value="_client.Address" />
+            <label for="clientAddress">Anschrift</label>
+            <InputTextArea id="clientAddress" class="form-control" rows="3" @bind-Value="_client.Address" />
         </div>
 
         <div class="row">
             <div class="form-group col-md-6">
-                <label>E-Mail</label>
-                <InputText class="form-control" @bind-Value="_client.Email" />
+                <label for="clientEmail">E-Mail</label>
+                <InputText id="clientEmail" class="form-control" @bind-Value="_client.Email" />
                 <ValidationMessage For="() => _client.Email" />
             </div>
             <div class="form-group col-md-6">
-                <label>Telefon</label>
-                <InputText class="form-control" @bind-Value="_client.Phone" />
+                <label for="clientPhone">Telefon</label>
+                <InputText id="clientPhone" class="form-control" @bind-Value="_client.Phone" />
             </div>
         </div>
 
         <div class="form-group">
-            <label>Anmerkungen</label>
-            <InputTextArea class="form-control" rows="2" @bind-Value="_client.Notes" />
+            <label for="clientNotes">Anmerkungen</label>
+            <InputTextArea id="clientNotes" class="form-control" rows="2" @bind-Value="_client.Notes" />
         </div>
 
         <div class="mt-3">

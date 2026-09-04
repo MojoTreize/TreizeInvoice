@@ -11,7 +11,18 @@
     <link rel="stylesheet" href="app.css" />
     <link rel="stylesheet" href="TreizeInvoice.Web.styles.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
-    <HeadOutlet />
+    @* Les pages applicatives rendent en interactif sans prérendu : un HeadOutlet
+       statique n'y verrait jamais le PageTitle et l'onglet resterait vide. À l'inverse,
+       un HeadOutlet interactif efface le titre des pages statiques (connexion,
+       inscription), qui n'ont aucun PageTitle côté circuit. D'où l'aiguillage. *@
+    @if (IsAppRoute)
+    {
+        <HeadOutlet @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
+    }
+    else
+    {
+        <HeadOutlet />
+    }
 </head>
 
 <body>
@@ -30,3 +41,11 @@
 </body>
 
 </html>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    private bool IsAppRoute =>
+        HttpContext.Request.Path.StartsWithSegments("/app", StringComparison.OrdinalIgnoreCase);
+}

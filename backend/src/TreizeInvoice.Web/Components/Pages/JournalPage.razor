@@ -10,11 +10,11 @@
         <h1 class="underlined">Einnahmen / Ausgaben</h1>
         <p class="greeting-sub">
             Grundlage Ihrer EÜR. Einnahmen aus bezahlten Rechnungen entstehen
-            automatisch ; Ausgaben erfassen Sie hier.
+            automatisch; Ausgaben erfassen Sie hier.
         </p>
     </div>
     <div class="page-actions">
-        <select class="form-select w-auto" value="@_year" @onchange="OnYearChanged">
+        <select class="form-select w-auto" aria-label="Jahr auswählen" value="@_year" @onchange="OnYearChanged">
             @foreach (var y in _years)
             {
                 <option value="@y">@y</option>
@@ -59,19 +59,19 @@
 
         <div class="row align-items-end">
             <div class="form-group col-md-2">
-                <label>Datum</label>
-                <InputDate class="form-control" @bind-Value="_newEntry.Date" />
+                <label for="jDate">Datum</label>
+                <InputDate id="jDate" class="form-control" @bind-Value="_newEntry.Date" />
             </div>
             <div class="form-group col-md-2">
-                <label>Art</label>
-                <InputSelect class="form-select" @bind-Value="_newEntry.Type">
+                <label for="jType">Art</label>
+                <InputSelect id="jType" class="form-select" @bind-Value="_newEntry.Type">
                     <option value="@JournalEntryType.Depense">Ausgabe</option>
                     <option value="@JournalEntryType.Recette">Einnahme</option>
                 </InputSelect>
             </div>
             <div class="form-group col-md-2">
-                <label>Kategorie</label>
-                <InputText class="form-control" list="categories" @bind-Value="_newEntry.Category" />
+                <label for="jCategory">Kategorie</label>
+                <InputText id="jCategory" class="form-control" list="categories" @bind-Value="_newEntry.Category" />
                 <datalist id="categories">
                     @foreach (var c in SuggestedCategories)
                     {
@@ -80,13 +80,13 @@
                 </datalist>
             </div>
             <div class="form-group col-md-4">
-                <label>Beschreibung</label>
-                <InputText class="form-control" @bind-Value="_newEntry.Description" />
+                <label for="jDescription">Beschreibung</label>
+                <InputText id="jDescription" class="form-control" @bind-Value="_newEntry.Description" />
                 <ValidationMessage For="() => _newEntry.Description" />
             </div>
             <div class="form-group col-md-2">
-                <label>Betrag (€)</label>
-                <InputNumber class="form-control text-end" @bind-Value="_newEntry.Amount" />
+                <label for="jAmount">Betrag (€)</label>
+                <InputNumber id="jAmount" class="form-control text-end" @bind-Value="_newEntry.Amount" />
                 <ValidationMessage For="() => _newEntry.Amount" />
             </div>
         </div>
