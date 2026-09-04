@@ -1,0 +1,13 @@
+# TreizeInvoice — Suchmaschinen
+# Die Anwendung hinter /app und /login enthält Kundendaten und gehört nicht in den Index.
+
+User-agent: *
+Allow: /$
+Allow: /impressum
+Allow: /datenschutz
+Disallow: /app
+Disallow: /login
+Disallow: /register
+Disallow: /auth
+
+Sitemap: https://treizeinvoice.de/sitemap.xml

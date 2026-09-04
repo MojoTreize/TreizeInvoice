@@ -947,17 +947,18 @@ label {
 
 @media (max-width: 900px) {
     /* Les tableaux larges d\u00e9filent dans leur panneau plut\u00f4t que d'\u00e9largir la page. */
-    .panel { overflow-x: auto; }
-    .chart { grid-template-columns: 40px 1fr; }
+    .panel { overflow-x: auto; }    .kpi-grid.cols-3 { grid-template-columns: repeat(2, 1fr); }    .chart { grid-template-columns: 40px 1fr; }
     .chart-yaxis, .chart-axis { font-size: .6rem; }
     .chart svg { height: 150px; }
     .page-head { gap: .8rem; }
 }
 
 @media (max-width: 640px) {
-    .kpi-grid { grid-template-columns: 1fr; }
+    .kpi-grid,
+    .kpi-grid.cols-3 { grid-template-columns: 1fr; }
     h1 { font-size: 1.9rem; }
     .kpi-spark { display: none; }
     .kpi-value { font-size: 1.7rem; }
     .chart-legend { flex-wrap: wrap; gap: .6rem; }
+    .page-actions { width: 100%; }
 }
