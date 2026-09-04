@@ -6,11 +6,17 @@
 
 <PageTitle>Clients — TreizeInvoice</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">Clients</h1>
-    <a class="btn btn-primary" href="/app/clients/nouveau">+ Nouveau client</a>
+<div class="page-head">
+    <div>
+        <h1 class="underlined">Clients</h1>
+        <p class="greeting-sub">Leurs coordonnées sont reprises sur vos factures.</p>
+    </div>
+    <div class="page-actions">
+        <a class="btn btn-primary" href="/app/clients/nouveau">+ Nouveau client</a>
+    </div>
 </div>
 
+<section class="panel">
 <div class="mb-3">
     <input class="form-control" placeholder="Rechercher (nom, contact, email)…"
            value="@_search" @oninput="OnSearchInput" />
@@ -22,9 +28,9 @@
 }
 else if (_clients.Count == 0)
 {
-    <div class="alert alert-secondary">
+    <p class="text-muted">
         @(string.IsNullOrWhiteSpace(_search) ? "Aucun client." : "Aucun client pour cette recherche.")
-    </div>
+    </p>
 }
 else
 {
@@ -55,6 +61,7 @@ else
         </tbody>
     </table>
 }
+</section>
 
 @if (_pendingDelete is not null)
 {

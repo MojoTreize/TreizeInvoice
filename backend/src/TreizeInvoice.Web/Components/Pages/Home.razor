@@ -1,15 +1,10 @@
-﻿@page "/"
-@page "/app"
+﻿@page "/app"
 @attribute [Authorize]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject IDashboardService Dashboard
+@inject IInvoiceService InvoiceService
 
 <PageTitle>Tableau de bord — TreizeInvoice</PageTitle>
-
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">Tableau de bord @_year</h1>
-    <a class="btn btn-outline-secondary" href="/app/sauvegarde">Sauvegarder maintenant</a>
-</div>
 
 @if (_summary is null)
 {
@@ -17,107 +12,244 @@
 }
 else
 {
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card p-3">
-                <div class="text-muted small">Chiffre d'affaires facturé</div>
-                <div class="fs-4">@_summary.Invoiced.ToString("N2") €</div>
-            </div>
+    <div class="page-head">
+        <div>
+            <h1 class="greeting underlined">Bonjour @FirstName,</h1>
+            <p class="greeting-sub">Voici la santé financière de votre activité aujourd'hui.</p>
         </div>
-        <div class="col-md-3">
-            <div class="card p-3">
-                <div class="text-muted small">Encaissé</div>
-                <div class="fs-4 text-success">@_summary.Collected.ToString("N2") €</div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card p-3">
-                <div class="text-muted small">Dépenses</div>
-                <div class="fs-4">@_summary.Expenses.ToString("N2") €</div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card p-3">
-                <div class="text-muted small">En attente de paiement</div>
-                <div class="fs-4 @(_summary.Unpaid.Any(i => i.DaysOverdue(_today) > 0) ? "text-danger" : "")">
-                    @_summary.UnpaidTotal.ToString("N2") €
-                </div>
-            </div>
+        <div class="page-actions">
+            <a class="btn btn-primary" href="/app/factures/nouvelle">+ Nouvelle facture</a>
         </div>
     </div>
 
-    <h2 class="h5">Factures impayées</h2>
-    @if (_summary.Unpaid.Count == 0)
+    @if (_error is not null)
     {
-        <div class="alert alert-success">Aucune facture en attente. Tout est encaissé.</div>
+        <div class="alert alert-danger">@_error</div>
     }
-    else
+    @if (_success is not null)
     {
-        <table class="table table-hover align-middle">
-            <thead>
-                <tr>
-                    <th>Numéro</th>
-                    <th>Client</th>
-                    <th>Échéance</th>
-                    <th>Retard</th>
-                    <th class="text-end">Montant</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var inv in _summary.Unpaid)
-                {
-                    var late = inv.DaysOverdue(_today);
-                    <tr class="@(late > 0 ? "table-danger" : "")">
-                        <td>@inv.InvoiceNumber</td>
-                        <td>@inv.Client?.Name</td>
-                        <td>@inv.DueDate.ToString("dd.MM.yyyy")</td>
-                        <td>
-                            @if (late > 0)
-                            {
-                                <span class="badge bg-danger">@late jour@(late > 1 ? "s" : "") de retard</span>
-                            }
-                            else
-                            {
-                                <span class="text-muted">dans les délais</span>
-                            }
-                        </td>
-                        <td class="text-end">@inv.Total.ToString("N2") €</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        <div class="alert alert-success">@_success</div>
     }
 
-    <h2 class="h5 mt-4">Dernières factures</h2>
-    @if (_summary.Recent.Count == 0)
+    @if (!_summary.ProfileComplete)
     {
-        <div class="alert alert-secondary">Aucune facture pour l'instant.</div>
+        <div class="alert alert-warning">
+            <strong>Complétez vos informations d'entreprise.</strong>
+            Nom, adresse, Steuernummer et IBAN sont exigés par le §14 UStG :
+            sans eux, aucune facture ne peut être émise.
+            <a href="/app/parametres">Aller aux paramètres</a>
+        </div>
     }
-    else
-    {
-        <table class="table table-sm align-middle">
-            <thead>
-                <tr>
-                    <th>Numéro</th>
-                    <th>Client</th>
-                    <th>Date</th>
-                    <th>Statut</th>
-                    <th class="text-end">Montant</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var inv in _summary.Recent)
+
+    <div class="kpi-grid">
+        <div class="kpi">
+            <span class="kpi-label">Chiffre d'affaires facturé</span>
+            <span class="kpi-value">@Euro(_summary.Invoiced)</span>
+            <Sparkline Values="Cumulative(p => p.Revenue)" ColorClass="chart-line-expenses" />
+        </div>
+
+        <div class="kpi">
+            <span class="kpi-label">Encaissé</span>
+            <span class="kpi-value accent-green">@Euro(_summary.Collected)</span>
+            <span class="kpi-note">
+                @if (_summary.CollectedTrend is { } trend)
                 {
-                    <tr>
-                        <td>@(inv.InvoiceNumber ?? "—")</td>
-                        <td>@inv.Client?.Name</td>
-                        <td>@inv.InvoiceDate.ToString("dd.MM.yyyy")</td>
-                        <td><span class="badge @StatusClass(inv.Status)">@StatusLabel(inv.Status)</span></td>
-                        <td class="text-end">@inv.Total.ToString("N2") €</td>
-                    </tr>
+                    <span class="@(trend >= 0 ? "trend-up" : "trend-down")">
+                        @(trend >= 0 ? "▲" : "▼") @Math.Abs(trend).ToString("0") %
+                    </span>
+                    <text> vs @(_year - 1)</text>
                 }
-            </tbody>
-        </table>
+            </span>
+            <Sparkline Values="Cumulative(p => p.Revenue)" ColorClass="chart-line-revenue" />
+        </div>
+
+        <div class="kpi">
+            <span class="kpi-label">Dépenses</span>
+            <span class="kpi-value">@Euro(_summary.Expenses)</span>
+            <span class="kpi-note">résultat @Euro(_summary.Result)</span>
+            <Sparkline Values="Cumulative(p => p.Expenses)" ColorClass="chart-line-result" />
+        </div>
+
+        <div class="kpi">
+            <span class="kpi-label">En attente de paiement</span>
+            <span class="kpi-value @(_overdueCount > 0 ? "accent-red" : "")">@Euro(_summary.UnpaidTotal)</span>
+            <span class="kpi-note">
+                @if (_overdueCount > 0)
+                {
+                    <span class="trend-down">@_overdueCount en retard</span>
+                }
+                else
+                {
+                    <text>@_summary.Unpaid.Count facture(s) ouverte(s)</text>
+                }
+            </span>
+        </div>
+    </div>
+
+    <div class="panel-grid">
+        <section class="panel">
+            <div class="panel-head">
+                <h2 class="underlined">Aperçu financier</h2>
+                <span class="panel-note">@_year, par mois</span>
+            </div>
+            <TrendChart Points="_summary.Monthly" />
+        </section>
+
+        <section class="panel">
+            <div class="panel-head">
+                <h2 class="underlined">Statut des factures</h2>
+            </div>
+            @if (_summary.StatusCounts.Count == 0)
+            {
+                <p class="text-muted">Aucune facture cette année.</p>
+            }
+            else
+            {
+                <StatusDonut Counts="_summary.StatusCounts" />
+            }
+        </section>
+    </div>
+
+    <div class="panel-grid">
+        <section class="panel">
+            <div class="panel-head">
+                <h2 class="underlined">Dernières factures</h2>
+                <a href="/app/factures">Voir tout</a>
+            </div>
+
+            @if (_summary.Recent.Count == 0)
+            {
+                <p class="text-muted">Aucune facture pour l'instant.</p>
+            }
+            else
+            {
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Numéro</th>
+                            <th>Client</th>
+                            <th>Date</th>
+                            <th>Statut</th>
+                            <th class="text-end">Montant</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var inv in _summary.Recent)
+                        {
+                            <tr>
+                                <td>@(inv.InvoiceNumber ?? "brouillon")</td>
+                                <td>@inv.Client?.Name</td>
+                                <td>@inv.InvoiceDate.ToString("dd.MM.yyyy")</td>
+                                <td><span class="badge @StatusClass(inv.Status)">@StatusLabel(inv.Status)</span></td>
+                                <td class="text-end">@Euro(inv.Total)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+
+        <section class="panel">
+            <div class="panel-head">
+                <h2 class="underlined accent">Actions rapides</h2>
+            </div>
+            <nav class="quick-list">
+                <a href="/app/factures/nouvelle">
+                    <span class="quick-ic">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M6 3h9l4 4v14H6z" /><path d="M9.5 12h5M12 9.5v5" />
+                        </svg>
+                    </span>
+                    <span class="quick-text"><strong>Nouvelle facture</strong><em>Créer une facture</em></span>
+                    <span class="chev">›</span>
+                </a>
+                <a href="/app/clients/nouveau">
+                    <span class="quick-ic">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="8" r="3.4" /><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" />
+                        </svg>
+                    </span>
+                    <span class="quick-text"><strong>Nouveau client</strong><em>Ajouter un client</em></span>
+                    <span class="chev">›</span>
+                </a>
+                <a href="/app/journal">
+                    <span class="quick-ic">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 4v11" /><path d="M8 11l4 4 4-4" /><path d="M5 20h14" />
+                        </svg>
+                    </span>
+                    <span class="quick-text"><strong>Saisir une dépense</strong><em>Alimente votre EÜR</em></span>
+                    <span class="chev">›</span>
+                </a>
+                <a href="@($"/app/journal/export?year={_year}")">
+                    <span class="quick-ic">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 4h13a1 1 0 0 1 1 1v15H5a1 1 0 0 1-1-1z" /><path d="M8 9h6M8 13h6" />
+                        </svg>
+                    </span>
+                    <span class="quick-text"><strong>Exporter @_year</strong><em>CSV pour le conseiller fiscal</em></span>
+                    <span class="chev">›</span>
+                </a>
+                <a href="/app/sauvegarde">
+                    <span class="quick-ic">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 4v10" /><path d="M8 10l4 4 4-4" /><path d="M5 19h14" />
+                        </svg>
+                    </span>
+                    <span class="quick-text"><strong>Sauvegarder</strong><em>Base et PDF archivés</em></span>
+                    <span class="chev">›</span>
+                </a>
+            </nav>
+        </section>
+    </div>
+
+    @if (_summary.Unpaid.Count > 0)
+    {
+        <section class="panel">
+            <div class="panel-head">
+                <h2 class="underlined">Factures impayées</h2>
+                <a href="/app/factures">Toutes les factures</a>
+            </div>
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Numéro</th>
+                        <th>Client</th>
+                        <th>Échéance</th>
+                        <th class="text-end">Montant</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var inv in _summary.Unpaid)
+                    {
+                        var late = inv.DaysOverdue(_today);
+                        <tr class="@(late > 0 ? "table-danger" : "")">
+                            <td>@inv.InvoiceNumber</td>
+                            <td>@inv.Client?.Name</td>
+                            <td>
+                                @inv.DueDate.ToString("dd.MM.yyyy")
+                                @if (late > 0)
+                                {
+                                    <span class="badge bg-danger ms-1">@late j</span>
+                                }
+                            </td>
+                            <td class="text-end">@Euro(inv.Total)</td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-success" @onclick="() => MarkPaidAsync(inv.Id)">
+                                    Marquer payée
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
     }
 }
 
@@ -125,9 +257,53 @@ else
     private DashboardSummary? _summary;
     private readonly DateOnly _today = DateOnly.FromDateTime(DateTime.Today);
     private readonly int _year = DateTime.Today.Year;
+    private string? _error;
+    private string? _success;
+    private int _overdueCount;
 
-    protected override async Task OnInitializedAsync() =>
+    private string FirstName =>
+        string.IsNullOrWhiteSpace(_summary?.OwnerName)
+            ? "à vous"
+            : _summary!.OwnerName.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
         _summary = await Dashboard.GetAsync(_year, _today);
+        _overdueCount = _summary.Unpaid.Count(i => i.DaysOverdue(_today) > 0);
+    }
+
+    /// <summary>Cumul mois par mois, jusqu'au mois courant : donne une courbe qui progresse.</summary>
+    private List<decimal> Cumulative(Func<MonthlyPoint, decimal> selector)
+    {
+        var result = new List<decimal>();
+        decimal running = 0;
+        foreach (var p in _summary!.Monthly.Where(p => p.Month <= _today.Month))
+        {
+            running += selector(p);
+            result.Add(running);
+        }
+        return result;
+    }
+
+    private async Task MarkPaidAsync(int id)
+    {
+        _error = null;
+        _success = null;
+        try
+        {
+            await InvoiceService.MarkAsPaidAsync(id);
+            _success = "Facture marquée payée. La recette a été ajoutée au journal.";
+        }
+        catch (DomainException ex)
+        {
+            _error = ex.Message;
+        }
+        await Load();
+    }
+
+    private static string Euro(decimal value) => value.ToString("N2") + " €";
 
     private static string StatusLabel(InvoiceStatus s) => s switch
     {
@@ -147,4 +323,3 @@ else
         _ => "bg-secondary"
     };
 }
-

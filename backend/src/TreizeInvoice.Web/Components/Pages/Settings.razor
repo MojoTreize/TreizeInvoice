@@ -10,10 +10,13 @@
 
 <PageTitle>Paramètres — TreizeInvoice</PageTitle>
 
-<h1>Paramètres</h1>
+<h1 class="underlined">Paramètres</h1>
 
-<h2 class="mt-4">Informations d'entreprise</h2>
-<p class="text-muted">Ces données figurent sur chaque facture (§14 UStG).</p>
+<section class="panel">
+<div class="panel-head">
+    <h2 class="underlined accent">Informations d'entreprise</h2>
+    <span class="panel-note">Reprises sur chaque facture (§14 UStG)</span>
+</div>
 
 @if (_profile is null)
 {
@@ -85,10 +88,12 @@ else
         <button type="submit" class="btn btn-primary">Enregistrer</button>
     </EditForm>
 }
+</section>
 
-<hr class="my-4" />
-
-<h2>Changer le mot de passe</h2>
+<section class="panel">
+<div class="panel-head">
+    <h2 class="underlined">Changer le mot de passe</h2>
+</div>
 
 <EditForm Model="_pwd" OnValidSubmit="ChangePasswordAsync" FormName="password">
     <DataAnnotationsValidator />
@@ -118,6 +123,7 @@ else
 
     <button type="submit" class="btn btn-outline-primary">Changer le mot de passe</button>
 </EditForm>
+</section>
 
 @code {
     private BusinessProfile? _profile;

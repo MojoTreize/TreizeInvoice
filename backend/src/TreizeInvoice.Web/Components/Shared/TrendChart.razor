@@ -1,0 +1,111 @@
+@* Courbes encaissements / dépenses / résultat. SVG pur, sans dépendance JavaScript. *@
+
+<div class="chart">
+    <div class="chart-legend">
+        <span class="legend-item"><i class="dot-revenue"></i> Encaissements</span>
+        <span class="legend-item"><i class="dot-expenses"></i> Dépenses</span>
+        <span class="legend-item"><i class="dot-result"></i> Résultat</span>
+    </div>
+
+    <div class="chart-yaxis">
+        @foreach (var tick in Ticks)
+        {
+            <span>@tick.ToString("N0") €</span>
+        }
+    </div>
+
+    <svg viewBox="0 0 @W @H" preserveAspectRatio="none" role="img"
+         aria-label="Encaissements, dépenses et résultat par mois">
+        @foreach (var tick in Ticks)
+        {
+            var y = Y(tick);
+            <line x1="0" y1="@Fmt(y)" x2="@W" y2="@Fmt(y)"
+                  class="@(tick == 0 ? "chart-zero" : "chart-grid")" />
+        }
+
+        <polyline class="chart-line chart-line-revenue" points="@Line(p => p.Revenue)" />
+        <polyline class="chart-line chart-line-expenses" points="@Line(p => -p.Expenses)" />
+        <polyline class="chart-line chart-line-result" points="@Line(p => p.Revenue - p.Expenses)" />
+
+        @foreach (var (x, y) in Dots(p => p.Revenue))
+        {
+            <circle cx="@x" cy="@y" r="2.6" class="chart-dot-revenue" />
+        }
+        @foreach (var (x, y) in Dots(p => -p.Expenses))
+        {
+            <circle cx="@x" cy="@y" r="2.6" class="chart-dot-expenses" />
+        }
+        @foreach (var (x, y) in Dots(p => p.Revenue - p.Expenses))
+        {
+            <circle cx="@x" cy="@y" r="2.6" class="chart-dot-result" />
+        }
+    </svg>
+
+    <div class="chart-axis">
+        @foreach (var p in Points)
+        {
+            <span>@MonthLabels[p.Month - 1]</span>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<MonthlyPoint> Points { get; set; } = Array.Empty<MonthlyPoint>();
+
+    private const int W = 600;
+    private const int H = 190;
+    private const int Pad = 10;
+
+    private static readonly string[] MonthLabels =
+        { "Janv.", "Févr.", "Mars", "Avril", "Mai", "Juin",
+          "Juil.", "Août", "Sept.", "Oct.", "Nov.", "Déc." };
+
+    private decimal Upper => Points.Count == 0 ? 0 : Points.Max(p => Math.Max(p.Revenue, p.Revenue - p.Expenses));
+    private decimal Lower => Points.Count == 0 ? 0 : Points.Min(p => Math.Min(-p.Expenses, p.Revenue - p.Expenses));
+
+    /// <summary>Graduations arrondies encadrant les valeurs, zéro toujours inclus.</summary>
+    private IReadOnlyList<decimal> Ticks
+    {
+        get
+        {
+            var top = Math.Max(Upper, 0);
+            var bottom = Math.Min(Lower, 0);
+            if (top == 0 && bottom == 0) return new decimal[] { 500, 0, -500 };
+
+            var step = Step(Math.Max(top, -bottom));
+            var list = new List<decimal>();
+            for (var v = Math.Ceiling(top / step) * step; v >= Math.Floor(bottom / step) * step; v -= step)
+                list.Add(v);
+            return list;
+        }
+    }
+
+    private static decimal Step(decimal magnitude)
+    {
+        decimal[] steps = { 50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000 };
+        foreach (var s in steps)
+            if (magnitude / s <= 4) return s;
+        return 100000;
+    }
+
+    private decimal Top => Ticks.Count == 0 ? 1 : Ticks[0];
+    private decimal Bottom => Ticks.Count == 0 ? 0 : Ticks[^1];
+
+    private double X(int index) => Points.Count <= 1 ? 0 : (double)index / (Points.Count - 1) * W;
+
+    private double Y(decimal value)
+    {
+        var span = Top - Bottom;
+        if (span == 0) return H / 2.0;
+        return Pad + (double)((Top - value) / span) * (H - 2 * Pad);
+    }
+
+    private static string Fmt(double v) => FormattableString.Invariant($"{v:0.##}");
+
+    private string Line(Func<MonthlyPoint, decimal> selector) =>
+        string.Join(' ', Points.Select((p, i) =>
+            FormattableString.Invariant($"{X(i):0.##},{Y(selector(p)):0.##}")));
+
+    private IEnumerable<(string X, string Y)> Dots(Func<MonthlyPoint, decimal> selector) =>
+        Points.Select((p, i) => (Fmt(X(i)), Fmt(Y(selector(p))))).ToList();
+}

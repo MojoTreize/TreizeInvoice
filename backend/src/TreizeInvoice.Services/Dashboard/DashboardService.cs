@@ -5,17 +5,32 @@ using TreizeInvoice.Domain.Enums;
 
 namespace TreizeInvoice.Services.Dashboard;
 
-/// <summary>Vue d'ensemble d'une année.</summary>
+/// <summary>Recettes et dépenses d'un mois, pour la courbe de l'exercice.</summary>
+public record MonthlyPoint(int Month, decimal Revenue, decimal Expenses);
+
+/// <summary>Nombre de factures par statut, pour l'anneau de répartition.</summary>
+public record StatusCount(InvoiceStatus Status, int Count);
+
 public record DashboardSummary(
     int Year,
+    string OwnerName,
+    bool ProfileComplete,
     decimal Invoiced,
     decimal Collected,
     decimal Expenses,
+    decimal CollectedPreviousYear,
     IReadOnlyList<Invoice> Unpaid,
-    IReadOnlyList<Invoice> Recent)
+    IReadOnlyList<Invoice> Recent,
+    IReadOnlyList<MonthlyPoint> Monthly,
+    IReadOnlyList<StatusCount> StatusCounts)
 {
     public decimal UnpaidTotal => Unpaid.Sum(i => i.Total);
     public decimal Result => Collected - Expenses;
+
+    /// <summary>Évolution des encaissements sur un an, en pourcentage. Null si l'an dernier était vide.</summary>
+    public decimal? CollectedTrend => CollectedPreviousYear == 0
+        ? null
+        : Math.Round((Collected - CollectedPreviousYear) / CollectedPreviousYear * 100, 0);
 }
 
 public interface IDashboardService
@@ -54,6 +69,15 @@ public class DashboardService : IDashboardService
             .OrderBy(i => i.DueDate)
             .ToList();
 
+        var statusCounts = new[]
+            {
+                InvoiceStatus.Draft, InvoiceStatus.Issued,
+                InvoiceStatus.Paid, InvoiceStatus.Cancelled
+            }
+            .Select(s => new StatusCount(s, invoices.Count(i => i.Status == s)))
+            .Where(s => s.Count > 0)
+            .ToList();
+
         var recent = await _db.Invoices
             .AsNoTracking()
             .IgnoreQueryFilters()
@@ -69,12 +93,44 @@ public class DashboardService : IDashboardService
             .Where(e => e.Date >= from && e.Date <= to)
             .ToListAsync();
 
+        var monthly = Enumerable.Range(1, 12)
+            .Select(m => new MonthlyPoint(
+                m,
+                journal.Where(e => e.Date.Month == m && e.Type == JournalEntryType.Recette).Sum(e => e.Amount),
+                journal.Where(e => e.Date.Month == m && e.Type == JournalEntryType.Depense).Sum(e => e.Amount)))
+            .ToList();
+
+        var previousFrom = new DateOnly(year - 1, 1, 1);
+        var previousTo = new DateOnly(year - 1, 12, 31);
+        // SQLite ne sait pas agréger des decimal : on ramène les montants puis on somme en mémoire.
+        var previousAmounts = await _db.JournalEntries
+            .AsNoTracking()
+            .Where(e => e.Date >= previousFrom && e.Date <= previousTo && e.Type == JournalEntryType.Recette)
+            .Select(e => e.Amount)
+            .ToListAsync();
+        var collectedPrevious = previousAmounts.Sum();
+
+        var profile = await _db.BusinessProfiles.AsNoTracking().FirstOrDefaultAsync();
+
         return new DashboardSummary(
             year,
+            string.IsNullOrWhiteSpace(profile?.FullName) ? "" : profile!.FullName,
+            IsComplete(profile),
             invoiced,
             journal.Where(e => e.Type == JournalEntryType.Recette).Sum(e => e.Amount),
             journal.Where(e => e.Type == JournalEntryType.Depense).Sum(e => e.Amount),
+            collectedPrevious,
             unpaid,
-            recent);
+            recent,
+            monthly,
+            statusCounts);
     }
+
+    /// <summary>Mentions §14 UStG indispensables avant toute émission.</summary>
+    private static bool IsComplete(BusinessProfile? p) =>
+        p is not null
+        && !string.IsNullOrWhiteSpace(p.FullName)
+        && !string.IsNullOrWhiteSpace(p.Address)
+        && !string.IsNullOrWhiteSpace(p.Steuernummer)
+        && !string.IsNullOrWhiteSpace(p.Iban);
 }

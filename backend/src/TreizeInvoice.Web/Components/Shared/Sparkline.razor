@@ -1,0 +1,30 @@
+@* Mini-courbe d'un indicateur. Purement décorative : aria-hidden. *@
+
+<svg class="kpi-spark" viewBox="0 0 100 34" preserveAspectRatio="none" aria-hidden="true">
+    <polyline class="chart-line @ColorClass" points="@Points" />
+</svg>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<decimal> Values { get; set; } = Array.Empty<decimal>();
+    [Parameter] public string ColorClass { get; set; } = "chart-line-revenue";
+
+    private string Points
+    {
+        get
+        {
+            if (Values.Count == 0) return "0,17 100,17";
+            if (Values.Count == 1) return "0,17 100,17";
+
+            var min = Values.Min();
+            var max = Values.Max();
+            var span = max - min;
+
+            return string.Join(' ', Values.Select((v, i) =>
+            {
+                var x = (double)i / (Values.Count - 1) * 100;
+                var y = span == 0 ? 17 : 30 - (double)((v - min) / span) * 26;
+                return FormattableString.Invariant($"{x:0.##},{y:0.##}");
+            }));
+        }
+    }
+}

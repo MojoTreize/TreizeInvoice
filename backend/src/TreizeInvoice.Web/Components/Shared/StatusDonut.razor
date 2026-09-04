@@ -1,0 +1,75 @@
+@* Répartition des factures par statut. Anneau dessiné avec stroke-dasharray. *@
+
+<div class="donut-block">
+    <div class="donut-wrap">
+        <svg class="donut" viewBox="0 0 42 42" role="img"
+             aria-label="Répartition des factures par statut">
+            <circle class="donut-track" cx="21" cy="21" r="@Fmt(R)" />
+            @{
+                double offset = 0;
+            }
+            @foreach (var slice in Slices)
+            {
+                var length = slice.Share * Circumference;
+                <circle cx="21" cy="21" r="@Fmt(R)"
+                        class="donut-slice @slice.CssClass"
+                        stroke-dasharray="@Fmt(length) @Fmt(Circumference - length)"
+                        stroke-dashoffset="@Fmt(-offset)" />
+                offset += length;
+            }
+        </svg>
+        <div class="donut-center">
+            <div class="donut-total">@Total</div>
+            <div class="donut-caption">factures</div>
+        </div>
+    </div>
+
+    <ul class="donut-legend">
+        @foreach (var slice in Slices)
+        {
+            <li>
+                <i class="@slice.CssClass"></i>
+                <span>@slice.Label</span>
+                <b>@slice.Count (@slice.Percent %)</b>
+            </li>
+        }
+    </ul>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<StatusCount> Counts { get; set; } = Array.Empty<StatusCount>();
+
+    private const double R = 15.9154943092; // circonférence = 100, les parts se lisent en %
+    private static double Circumference => 2 * Math.PI * R;
+
+    private int Total => Counts.Sum(c => c.Count);
+
+    private IEnumerable<Slice> Slices => Counts.Select(c => new Slice(
+        Label(c.Status),
+        CssClass(c.Status),
+        c.Count,
+        Total == 0 ? 0 : (double)c.Count / Total,
+        Total == 0 ? 0 : (int)Math.Round((double)c.Count / Total * 100)));
+
+    private static string Fmt(double value) => FormattableString.Invariant($"{value:0.###}");
+
+    private record Slice(string Label, string CssClass, int Count, double Share, int Percent);
+
+    private static string Label(InvoiceStatus s) => s switch
+    {
+        InvoiceStatus.Draft => "Brouillon",
+        InvoiceStatus.Issued => "Émise",
+        InvoiceStatus.Paid => "Payée",
+        InvoiceStatus.Cancelled => "Annulée",
+        _ => s.ToString()
+    };
+
+    private static string CssClass(InvoiceStatus s) => s switch
+    {
+        InvoiceStatus.Draft => "slice-draft",
+        InvoiceStatus.Issued => "slice-issued",
+        InvoiceStatus.Paid => "slice-paid",
+        InvoiceStatus.Cancelled => "slice-cancelled",
+        _ => "slice-draft"
+    };
+}

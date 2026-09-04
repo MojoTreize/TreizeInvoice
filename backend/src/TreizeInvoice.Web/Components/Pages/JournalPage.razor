@@ -5,61 +5,57 @@
 
 <PageTitle>Journal — TreizeInvoice</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">Journal recettes / dépenses</h1>
-    <a class="btn btn-outline-secondary" href="@($"/app/journal/export?year={_year}")">Export CSV @_year</a>
+<div class="page-head">
+    <div>
+        <h1 class="underlined">Journal recettes / dépenses</h1>
+        <p class="greeting-sub">
+            Base de votre EÜR. Les recettes des factures payées y sont ajoutées
+            automatiquement ; les dépenses se saisissent ici.
+        </p>
+    </div>
+    <div class="page-actions">
+        <select class="form-select w-auto" value="@_year" @onchange="OnYearChanged">
+            @foreach (var y in _years)
+            {
+                <option value="@y">@y</option>
+            }
+        </select>
+        <a class="btn" href="@($"/app/journal/export?year={_year}")">Export CSV @_year</a>
+    </div>
 </div>
-
-<p class="text-muted">
-    Base de votre EÜR. Les recettes des factures payées y sont ajoutées automatiquement ;
-    les dépenses se saisissent ici.
-</p>
 
 @if (_error is not null)
 {
     <div class="alert alert-danger">@_error</div>
 }
 
-<div class="mb-3 d-flex align-items-center gap-2">
-    <label class="mb-0">Année</label>
-    <select class="form-select w-auto" value="@_year" @onchange="OnYearChanged">
-        @foreach (var y in _years)
-        {
-            <option value="@y">@y</option>
-        }
-    </select>
-</div>
-
 @if (_summary is not null)
 {
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <div class="card p-3">
-                <div class="text-muted small">Recettes @_year</div>
-                <div class="fs-4">@_summary.Revenue.ToString("N2") €</div>
-            </div>
+    <div class="kpi-grid cols-3">
+        <div class="kpi">
+            <span class="kpi-label">Recettes @_year</span>
+            <span class="kpi-value accent-green">@_summary.Revenue.ToString("N2") €</span>
         </div>
-        <div class="col-md-4">
-            <div class="card p-3">
-                <div class="text-muted small">Dépenses @_year</div>
-                <div class="fs-4">@_summary.Expenses.ToString("N2") €</div>
-            </div>
+        <div class="kpi">
+            <span class="kpi-label">Dépenses @_year</span>
+            <span class="kpi-value">@_summary.Expenses.ToString("N2") €</span>
         </div>
-        <div class="col-md-4">
-            <div class="card p-3">
-                <div class="text-muted small">Résultat @_year</div>
-                <div class="fs-4 @(_summary.Result < 0 ? "text-danger" : "text-success")">
-                    @_summary.Result.ToString("N2") €
-                </div>
-            </div>
+        <div class="kpi">
+            <span class="kpi-label">Résultat @_year</span>
+            <span class="kpi-value @(_summary.Result < 0 ? "accent-red" : "accent-green")">
+                @_summary.Result.ToString("N2") €
+            </span>
         </div>
     </div>
 }
 
-<h2 class="h5">Ajouter une dépense</h2>
+<section class="panel">
+    <div class="panel-head">
+        <h2 class="underlined accent">Ajouter une dépense</h2>
+    </div>
 
-<EditForm Model="_newEntry" OnValidSubmit="AddAsync" FormName="journalEntry" class="mb-4">
-    <DataAnnotationsValidator />
+    <EditForm Model="_newEntry" OnValidSubmit="AddAsync" FormName="journalEntry">
+        <DataAnnotationsValidator />
 
     <div class="row align-items-end">
         <div class="form-group col-md-2">
@@ -96,9 +92,14 @@
     </div>
 
     <button type="submit" class="btn btn-primary mt-2">Ajouter</button>
-</EditForm>
+    </EditForm>
+</section>
 
-<h2 class="h5">Écritures @_year</h2>
+<div class="panel-grid">
+<section class="panel">
+    <div class="panel-head">
+        <h2 class="underlined">Écritures @_year</h2>
+    </div>
 
 @if (_entries is null)
 {
@@ -106,7 +107,7 @@
 }
 else if (_entries.Count == 0)
 {
-    <div class="alert alert-secondary">Aucune écriture pour @_year.</div>
+    <p class="text-muted">Aucune écriture pour @_year.</p>
 }
 else
 {
@@ -151,30 +152,41 @@ else
         </tbody>
     </table>
 }
+</section>
 
-@if (_summary is { ByCategory.Count: > 0 })
-{
-    <h2 class="h5 mt-4">Totaux par catégorie</h2>
-    <table class="table table-sm w-auto">
-        <thead>
-            <tr>
-                <th>Catégorie</th>
-                <th class="text-end">Recettes</th>
-                <th class="text-end">Dépenses</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var c in _summary.ByCategory)
-            {
+<section class="panel">
+    <div class="panel-head">
+        <h2 class="underlined accent">Totaux par catégorie</h2>
+    </div>
+
+    @if (_summary is { ByCategory.Count: > 0 })
+    {
+        <table class="table table-sm">
+            <thead>
                 <tr>
-                    <td>@c.Category</td>
-                    <td class="text-end">@(c.Revenue == 0 ? "—" : c.Revenue.ToString("N2") + " €")</td>
-                    <td class="text-end">@(c.Expenses == 0 ? "—" : c.Expenses.ToString("N2") + " €")</td>
+                    <th>Catégorie</th>
+                    <th class="text-end">Recettes</th>
+                    <th class="text-end">Dépenses</th>
                 </tr>
-            }
-        </tbody>
-    </table>
-}
+            </thead>
+            <tbody>
+                @foreach (var c in _summary.ByCategory)
+                {
+                    <tr>
+                        <td>@c.Category</td>
+                        <td class="text-end">@(c.Revenue == 0 ? "—" : c.Revenue.ToString("N2") + " €")</td>
+                        <td class="text-end">@(c.Expenses == 0 ? "—" : c.Expenses.ToString("N2") + " €")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p class="text-muted">Aucune catégorie pour @_year.</p>
+    }
+</section>
+</div>
 
 @code {
     private static readonly string[] SuggestedCategories =

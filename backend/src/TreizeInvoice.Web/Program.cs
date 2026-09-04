@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using TreizeInvoice.Data;
 using TreizeInvoice.Services.Auditing;
 using TreizeInvoice.Services.Auth;
@@ -33,6 +34,11 @@ var dbPath = Path.Combine(dataDir, "treizeinvoice.db");
 var logoPath = Path.GetFullPath(builder.Configuration["Storage:LogoPath"]
     ?? Path.Combine(builder.Environment.ContentRootPath,
         "..", "..", "..", "frontend", "assets", "treizeinvoice-mark-mono.svg"));
+
+// Landing statique servie à la racine : permet de parcourir vitrine puis application
+// comme un visiteur. En production elle est hébergée séparément (voir README).
+var frontendPath = Path.GetFullPath(builder.Configuration["Storage:FrontendPath"]
+    ?? Path.Combine(builder.Environment.ContentRootPath, "..", "..", "..", "frontend"));
 
 builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite($"Data Source={dbPath}"));
 
@@ -114,6 +120,13 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseStaticFiles();
+
+if (Directory.Exists(frontendPath))
+{
+    var landing = new PhysicalFileProvider(frontendPath);
+    app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = landing });
+    app.UseStaticFiles(new StaticFileOptions { FileProvider = landing });
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
