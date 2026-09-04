@@ -1,4 +1,4 @@
-@page "/app/parametres"
+@page "/app/einstellungen"
 @attribute [Authorize]
 @* Sans prérendu : la page ne s'affiche qu'une fois interactive, sinon les boutons restent inertes. *@
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
@@ -8,19 +8,19 @@
 @inject IAuthService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
 
-<PageTitle>Paramètres — TreizeInvoice</PageTitle>
+<PageTitle>Einstellungen — TreizeInvoice</PageTitle>
 
-<h1 class="underlined">Paramètres</h1>
+<h1 class="underlined">Einstellungen</h1>
 
 <section class="panel">
 <div class="panel-head">
-    <h2 class="underlined accent">Informations d'entreprise</h2>
-    <span class="panel-note">Reprises sur chaque facture (§14 UStG)</span>
+    <h2 class="underlined accent">Unternehmensangaben</h2>
+    <span class="panel-note">Erscheinen auf jeder Rechnung (§14 UStG)</span>
 </div>
 
 @if (_profile is null)
 {
-    <p>Chargement…</p>
+    <p>Wird geladen…</p>
 }
 else
 {
@@ -29,28 +29,28 @@ else
 
         @if (_profileSaved)
         {
-            <div class="alert alert-success" role="alert">Informations enregistrées.</div>
+            <div class="alert alert-success" role="alert">Angaben gespeichert.</div>
         }
 
         <div class="row">
             <div class="form-group col-md-6">
-                <label>Nom complet / raison sociale</label>
+                <label>Name / Firma</label>
                 <InputText class="form-control" @bind-Value="_profile.FullName" />
             </div>
             <div class="form-group col-md-6">
-                <label>Email</label>
+                <label>E-Mail</label>
                 <InputText class="form-control" @bind-Value="_profile.Email" />
             </div>
         </div>
 
         <div class="form-group">
-            <label>Adresse</label>
+            <label>Anschrift</label>
             <InputTextArea class="form-control" rows="3" @bind-Value="_profile.Address" />
         </div>
 
         <div class="row">
             <div class="form-group col-md-4">
-                <label>Téléphone</label>
+                <label>Telefon</label>
                 <InputText class="form-control" @bind-Value="_profile.Phone" />
             </div>
             <div class="form-group col-md-4">
@@ -58,7 +58,7 @@ else
                 <InputText class="form-control" @bind-Value="_profile.Steuernummer" />
             </div>
             <div class="form-group col-md-4">
-                <label>Format de numérotation</label>
+                <label>Nummernformat</label>
                 <InputText class="form-control" @bind-Value="_profile.NumberFormat" />
             </div>
         </div>
@@ -73,7 +73,7 @@ else
                 <InputText class="form-control" @bind-Value="_profile.Bic" />
             </div>
             <div class="form-group col-md-4">
-                <label>Banque</label>
+                <label>Bank</label>
                 <InputText class="form-control" @bind-Value="_profile.BankName" />
             </div>
         </div>
@@ -81,18 +81,18 @@ else
         <div class="form-check mb-3">
             <InputCheckbox class="form-check-input" id="klein" @bind-Value="_profile.IsKleinunternehmer" />
             <label class="form-check-label" for="klein">
-                Kleinunternehmer (§19 UStG — pas de TVA facturée)
+                Kleinunternehmer (§19 UStG — keine Umsatzsteuer)
             </label>
         </div>
 
-        <button type="submit" class="btn btn-primary">Enregistrer</button>
+        <button type="submit" class="btn btn-primary">Speichern</button>
     </EditForm>
 }
 </section>
 
 <section class="panel">
 <div class="panel-head">
-    <h2 class="underlined">Changer le mot de passe</h2>
+    <h2 class="underlined">Passwort ändern</h2>
 </div>
 
 <EditForm Model="_pwd" OnValidSubmit="ChangePasswordAsync" FormName="password">
@@ -105,23 +105,23 @@ else
 
     <div class="row">
         <div class="form-group col-md-4">
-            <label>Mot de passe actuel</label>
+            <label>Aktuelles Passwort</label>
             <InputText type="password" class="form-control" @bind-Value="_pwd.Current" />
             <ValidationMessage For="() => _pwd.Current" />
         </div>
         <div class="form-group col-md-4">
-            <label>Nouveau mot de passe</label>
+            <label>Neues Passwort</label>
             <InputText type="password" class="form-control" @bind-Value="_pwd.New" />
             <ValidationMessage For="() => _pwd.New" />
         </div>
         <div class="form-group col-md-4">
-            <label>Confirmer</label>
+            <label>Bestätigen</label>
             <InputText type="password" class="form-control" @bind-Value="_pwd.Confirm" />
             <ValidationMessage For="() => _pwd.Confirm" />
         </div>
     </div>
 
-    <button type="submit" class="btn btn-outline-primary">Changer le mot de passe</button>
+    <button type="submit" class="btn btn-outline-primary">Passwort ändern</button>
 </EditForm>
 </section>
 
@@ -152,7 +152,7 @@ else
         if (_pwd.New != _pwd.Confirm)
         {
             _pwdSuccess = false;
-            _pwdMessage = "La confirmation ne correspond pas au nouveau mot de passe.";
+            _pwdMessage = "Die Bestätigung stimmt nicht mit dem neuen Passwort überein.";
             return;
         }
 
@@ -161,15 +161,15 @@ else
         if (!int.TryParse(idValue, out var userId))
         {
             _pwdSuccess = false;
-            _pwdMessage = "Session invalide. Reconnectez-vous.";
+            _pwdMessage = "Sitzung ungültig. Bitte melden Sie sich erneut an.";
             return;
         }
 
         var ok = await AuthService.ChangePasswordAsync(userId, _pwd.Current, _pwd.New);
         _pwdSuccess = ok;
         _pwdMessage = ok
-            ? "Mot de passe modifié."
-            : "Le mot de passe actuel est incorrect.";
+            ? "Passwort geändert."
+            : "Das aktuelle Passwort ist falsch.";
 
         if (ok)
         {
@@ -179,14 +179,14 @@ else
 
     private class PasswordModel
     {
-        [Required(ErrorMessage = "Requis.")]
+        [Required(ErrorMessage = "Pflichtfeld.")]
         public string Current { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Requis.")]
-        [MinLength(6, ErrorMessage = "6 caractères minimum.")]
+        [Required(ErrorMessage = "Pflichtfeld.")]
+        [MinLength(6, ErrorMessage = "Mindestens 6 Zeichen.")]
         public string New { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Requis.")]
+        [Required(ErrorMessage = "Pflichtfeld.")]
         public string Confirm { get; set; } = string.Empty;
     }
 }

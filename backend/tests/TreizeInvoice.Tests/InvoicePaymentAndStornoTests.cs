@@ -176,7 +176,7 @@ public class InvoicePaymentAndStornoTests
         await service.CancelAsync(issued.Id);
 
         var ex = await Assert.ThrowsAsync<DomainException>(() => service.CancelAsync(issued.Id));
-        Assert.Contains("déjà annulée", ex.Message);
+        Assert.Contains("bereits storniert", ex.Message);
     }
 
     [Fact]
@@ -199,7 +199,7 @@ public class InvoicePaymentAndStornoTests
         await service.MarkAsPaidAsync(issued.Id);
 
         var ex = await Assert.ThrowsAsync<DomainException>(() => service.CancelAsync(issued.Id));
-        Assert.Contains("encaissée", ex.Message);
+        Assert.Contains("vereinnahmt", ex.Message);
     }
 
     [Fact]
@@ -223,7 +223,7 @@ public class InvoicePaymentAndStornoTests
         var storno = await service.CancelAsync(issued.Id);
 
         var ex = await Assert.ThrowsAsync<DomainException>(() => service.CancelAsync(storno.Id));
-        Assert.Contains("elle-même une facture d'annulation", ex.Message);
+        Assert.Contains("selbst eine Stornorechnung", ex.Message);
     }
 
     [Fact]

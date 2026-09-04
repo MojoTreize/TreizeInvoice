@@ -4,21 +4,21 @@
 @inject IDashboardService Dashboard
 @inject IInvoiceService InvoiceService
 
-<PageTitle>Tableau de bord — TreizeInvoice</PageTitle>
+<PageTitle>Übersicht — TreizeInvoice</PageTitle>
 
 @if (_summary is null)
 {
-    <p>Chargement…</p>
+    <p>Wird geladen…</p>
 }
 else
 {
     <div class="page-head">
         <div>
-            <h1 class="greeting underlined">Bonjour @FirstName,</h1>
-            <p class="greeting-sub">Voici la santé financière de votre activité aujourd'hui.</p>
+            <h1 class="greeting underlined">Guten Tag @FirstName,</h1>
+            <p class="greeting-sub">So steht Ihr Unternehmen heute da.</p>
         </div>
         <div class="page-actions">
-            <a class="btn btn-primary" href="/app/factures/nouvelle">+ Nouvelle facture</a>
+            <a class="btn btn-primary" href="/app/rechnungen/neu">+ Neue Rechnung</a>
         </div>
     </div>
 
@@ -34,22 +34,23 @@ else
     @if (!_summary.ProfileComplete)
     {
         <div class="alert alert-warning">
-            <strong>Complétez vos informations d'entreprise.</strong>
-            Nom, adresse, Steuernummer et IBAN sont exigés par le §14 UStG :
-            sans eux, aucune facture ne peut être émise.
-            <a href="/app/parametres">Aller aux paramètres</a>
+            <strong>Bitte vervollständigen Sie Ihre Unternehmensangaben.</strong>
+            Name, Anschrift, Steuernummer und IBAN sind nach §14 UStG Pflicht —
+            ohne sie kann keine Rechnung gestellt werden.
+            <a href="/app/einstellungen">Zu den Einstellungen</a>
         </div>
     }
 
     <div class="kpi-grid">
         <div class="kpi">
-            <span class="kpi-label">Chiffre d'affaires facturé</span>
+            <span class="kpi-label">Umsatz berechnet</span>
             <span class="kpi-value">@Euro(_summary.Invoiced)</span>
+            <span class="kpi-note">gestellte und bezahlte Rechnungen</span>
             <Sparkline Values="Cumulative(p => p.Invoiced)" Scale="SparkScale" ColorClass="chart-line-expenses" />
         </div>
 
         <div class="kpi">
-            <span class="kpi-label">Encaissé</span>
+            <span class="kpi-label">Eingenommen</span>
             <span class="kpi-value accent-green">@Euro(_summary.Collected)</span>
             <span class="kpi-note">
                 @if (_summary.CollectedTrend is { } trend)
@@ -57,30 +58,34 @@ else
                     <span class="@(trend >= 0 ? "trend-up" : "trend-down")">
                         @(trend >= 0 ? "▲" : "▼") @Math.Abs(trend).ToString("0") %
                     </span>
-                    <text> vs @(_year - 1)</text>
+                    <text> ggü. @(_year - 1)</text>
+                }
+                else
+                {
+                    <text>Einnahmen im Journal</text>
                 }
             </span>
             <Sparkline Values="Cumulative(p => p.Revenue)" Scale="SparkScale" ColorClass="chart-line-revenue" />
         </div>
 
         <div class="kpi">
-            <span class="kpi-label">Dépenses</span>
+            <span class="kpi-label">Ausgaben</span>
             <span class="kpi-value">@Euro(_summary.Expenses)</span>
-            <span class="kpi-note">résultat @Euro(_summary.Result)</span>
+            <span class="kpi-note">Ergebnis @Euro(_summary.Result)</span>
             <Sparkline Values="Cumulative(p => p.Expenses)" Scale="SparkScale" ColorClass="chart-line-result" />
         </div>
 
         <div class="kpi">
-            <span class="kpi-label">En attente de paiement</span>
+            <span class="kpi-label">Offene Forderungen</span>
             <span class="kpi-value @(_overdueCount > 0 ? "accent-red" : "")">@Euro(_summary.UnpaidTotal)</span>
             <span class="kpi-note">
                 @if (_overdueCount > 0)
                 {
-                    <span class="trend-down">@_overdueCount en retard</span>
+                    <span class="trend-down">@_overdueCount überfällig</span>
                 }
                 else
                 {
-                    <text>@_summary.Unpaid.Count facture(s) ouverte(s)</text>
+                    <text>@_summary.Unpaid.Count offene Rechnung(en)</text>
                 }
             </span>
         </div>
@@ -89,19 +94,19 @@ else
     <div class="panel-grid">
         <section class="panel">
             <div class="panel-head">
-                <h2 class="underlined">Aperçu financier</h2>
-                <span class="panel-note">@_year, par mois</span>
+                <h2 class="underlined">Finanzüberblick</h2>
+                <span class="panel-note">@_year, je Monat</span>
             </div>
             <TrendChart Points="_summary.Monthly" />
         </section>
 
         <section class="panel">
             <div class="panel-head">
-                <h2 class="underlined">Statut des factures</h2>
+                <h2 class="underlined">Rechnungsstatus</h2>
             </div>
             @if (_summary.StatusCounts.Count == 0)
             {
-                <p class="text-muted">Aucune facture cette année.</p>
+                <p class="text-muted">Keine Rechnungen in diesem Jahr.</p>
             }
             else
             {
@@ -113,31 +118,31 @@ else
     <div class="panel-grid">
         <section class="panel">
             <div class="panel-head">
-                <h2 class="underlined">Dernières factures</h2>
-                <a href="/app/factures">Voir tout</a>
+                <h2 class="underlined">Letzte Rechnungen</h2>
+                <a href="/app/rechnungen">Alle anzeigen</a>
             </div>
 
             @if (_summary.Recent.Count == 0)
             {
-                <p class="text-muted">Aucune facture pour l'instant.</p>
+                <p class="text-muted">Noch keine Rechnungen.</p>
             }
             else
             {
                 <table class="table table-hover align-middle">
                     <thead>
                         <tr>
-                            <th>Numéro</th>
-                            <th>Client</th>
-                            <th>Date</th>
-                            <th>Statut</th>
-                            <th class="text-end">Montant</th>
+                            <th>Nummer</th>
+                            <th>Kunde</th>
+                            <th>Datum</th>
+                            <th>Status</th>
+                            <th class="text-end">Betrag</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var inv in _summary.Recent)
                         {
                             <tr>
-                                <td>@(inv.InvoiceNumber ?? "brouillon")</td>
+                                <td>@(inv.InvoiceNumber ?? "Entwurf")</td>
                                 <td>@inv.Client?.Name</td>
                                 <td>@inv.InvoiceDate.ToString("dd.MM.yyyy")</td>
                                 <td><span class="badge @StatusClass(inv.Status)">@StatusLabel(inv.Status)</span></td>
@@ -151,27 +156,27 @@ else
 
         <section class="panel">
             <div class="panel-head">
-                <h2 class="underlined accent">Actions rapides</h2>
+                <h2 class="underlined accent">Schnellzugriff</h2>
             </div>
             <nav class="quick-list">
-                <a href="/app/factures/nouvelle">
+                <a href="/app/rechnungen/neu">
                     <span class="quick-ic">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
                              stroke-linecap="round" stroke-linejoin="round">
                             <path d="M6 3h9l4 4v14H6z" /><path d="M9.5 12h5M12 9.5v5" />
                         </svg>
                     </span>
-                    <span class="quick-text"><strong>Nouvelle facture</strong><em>Créer une facture</em></span>
+                    <span class="quick-text"><strong>Neue Rechnung</strong><em>Rechnung erstellen</em></span>
                     <span class="chev">›</span>
                 </a>
-                <a href="/app/clients/nouveau">
+                <a href="/app/kunden/neu">
                     <span class="quick-ic">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
                              stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="8" r="3.4" /><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" />
                         </svg>
                     </span>
-                    <span class="quick-text"><strong>Nouveau client</strong><em>Ajouter un client</em></span>
+                    <span class="quick-text"><strong>Neuer Kunde</strong><em>Kunde anlegen</em></span>
                     <span class="chev">›</span>
                 </a>
                 <a href="/app/journal">
@@ -181,7 +186,7 @@ else
                             <path d="M12 4v11" /><path d="M8 11l4 4 4-4" /><path d="M5 20h14" />
                         </svg>
                     </span>
-                    <span class="quick-text"><strong>Saisir une dépense</strong><em>Alimente votre EÜR</em></span>
+                    <span class="quick-text"><strong>Ausgabe erfassen</strong><em>Für Ihre EÜR</em></span>
                     <span class="chev">›</span>
                 </a>
                 <a href="@($"/app/journal/export?year={_year}")">
@@ -191,17 +196,17 @@ else
                             <path d="M4 4h13a1 1 0 0 1 1 1v15H5a1 1 0 0 1-1-1z" /><path d="M8 9h6M8 13h6" />
                         </svg>
                     </span>
-                    <span class="quick-text"><strong>Exporter @_year</strong><em>CSV pour le conseiller fiscal</em></span>
+                    <span class="quick-text"><strong>Export @_year</strong><em>CSV für die Steuerberatung</em></span>
                     <span class="chev">›</span>
                 </a>
-                <a href="/app/sauvegarde">
+                <a href="/app/sicherung">
                     <span class="quick-ic">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
                              stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 4v10" /><path d="M8 10l4 4 4-4" /><path d="M5 19h14" />
                         </svg>
                     </span>
-                    <span class="quick-text"><strong>Sauvegarder</strong><em>Base et PDF archivés</em></span>
+                    <span class="quick-text"><strong>Sicherung</strong><em>Datenbank und PDF-Archiv</em></span>
                     <span class="chev">›</span>
                 </a>
             </nav>
@@ -212,17 +217,17 @@ else
     {
         <section class="panel">
             <div class="panel-head">
-                <h2 class="underlined">Factures impayées</h2>
-                <a href="/app/factures">Toutes les factures</a>
+                <h2 class="underlined">Offene Rechnungen</h2>
+                <a href="/app/rechnungen">Alle Rechnungen</a>
             </div>
             <table class="table table-hover align-middle">
                 <thead>
                     <tr>
-                        <th>Numéro</th>
-                        <th>Client</th>
-                        <th>Échéance</th>
-                        <th class="text-end">Montant</th>
-                        <th class="text-end">Action</th>
+                        <th>Nummer</th>
+                        <th>Kunde</th>
+                        <th>Fällig am</th>
+                        <th class="text-end">Betrag</th>
+                        <th class="text-end">Aktion</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -236,13 +241,13 @@ else
                                 @inv.DueDate.ToString("dd.MM.yyyy")
                                 @if (late > 0)
                                 {
-                                    <span class="badge bg-danger ms-1">@late j</span>
+                                    <span class="badge bg-danger ms-1">@late T</span>
                                 }
                             </td>
                             <td class="text-end">@Euro(inv.Total)</td>
                             <td class="text-end">
                                 <button class="btn btn-sm btn-success" @onclick="() => MarkPaidAsync(inv.Id)">
-                                    Marquer payée
+                                    Als bezahlt
                                 </button>
                             </td>
                         </tr>
@@ -263,7 +268,7 @@ else
 
     private string FirstName =>
         string.IsNullOrWhiteSpace(_summary?.OwnerName)
-            ? "à vous"
+            ? ""
             : _summary!.OwnerName.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
 
     protected override async Task OnInitializedAsync() => await Load();
@@ -309,7 +314,7 @@ else
         try
         {
             await InvoiceService.MarkAsPaidAsync(id);
-            _success = "Facture marquée payée. La recette a été ajoutée au journal.";
+            _success = "Rechnung als bezahlt markiert. Die Einnahme steht im Journal.";
         }
         catch (DomainException ex)
         {
@@ -322,10 +327,10 @@ else
 
     private static string StatusLabel(InvoiceStatus s) => s switch
     {
-        InvoiceStatus.Draft => "Brouillon",
-        InvoiceStatus.Issued => "Émise",
-        InvoiceStatus.Paid => "Payée",
-        InvoiceStatus.Cancelled => "Annulée",
+        InvoiceStatus.Draft => "Entwurf",
+        InvoiceStatus.Issued => "Gestellt",
+        InvoiceStatus.Paid => "Bezahlt",
+        InvoiceStatus.Cancelled => "Storniert",
         _ => s.ToString()
     };
 

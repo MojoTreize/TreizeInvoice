@@ -14,10 +14,10 @@ public class JournalEntry
     public JournalEntryType Type { get; set; }
 
     /// <summary>Montant toujours positif ; c'est <see cref="Type"/> qui donne le sens.</summary>
-    [Range(0.01, double.MaxValue, ErrorMessage = "Le montant doit être supérieur à 0.")]
+    [Range(0.01, double.MaxValue, ErrorMessage = "Der Betrag muss größer als 0 sein.")]
     public decimal Amount { get; set; }
 
-    [Required(ErrorMessage = "La description est requise.")]
+    [Required(ErrorMessage = "Bitte geben Sie eine Beschreibung an.")]
     [MaxLength(500)]
     public string Description { get; set; } = string.Empty;
 

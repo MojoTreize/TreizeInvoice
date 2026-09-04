@@ -1,18 +1,18 @@
-@page "/app/factures"
+@page "/app/rechnungen"
 @attribute [Authorize]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject IInvoiceService InvoiceService
 @inject NavigationManager Nav
 
-<PageTitle>Factures — TreizeInvoice</PageTitle>
+<PageTitle>Rechnungen — TreizeInvoice</PageTitle>
 
 <div class="page-head">
     <div>
-        <h1 class="underlined">Factures</h1>
-        <p class="greeting-sub">Une facture émise est verrouillée : seule une annulation la corrige.</p>
+        <h1 class="underlined">Rechnungen</h1>
+        <p class="greeting-sub">Eine gestellte Rechnung ist festgeschrieben — Korrekturen nur per Storno.</p>
     </div>
     <div class="page-actions">
-        <a class="btn btn-primary" href="/app/factures/nouvelle">+ Nouvelle facture</a>
+        <a class="btn btn-primary" href="/app/rechnungen/neu">+ Neue Rechnung</a>
     </div>
 </div>
 
@@ -28,11 +28,11 @@
 
 @if (_invoices is null)
 {
-    <p>Chargement…</p>
+    <p>Wird geladen…</p>
 }
 else if (_invoices.Count == 0)
 {
-    <section class="panel"><p class="text-muted mb-0">Aucune facture pour l'instant.</p></section>
+    <section class="panel"><p class="text-muted mb-0">Noch keine Rechnungen.</p></section>
 }
 else
 {
@@ -40,12 +40,12 @@ else
     <table class="table table-hover align-middle">
         <thead>
             <tr>
-                <th>Numéro</th>
-                <th>Client</th>
-                <th>Date</th>
-                <th>Statut</th>
-                <th class="text-end">Total</th>
-                <th class="text-end">Actions</th>
+                <th>Nummer</th>
+                <th>Kunde</th>
+                <th>Datum</th>
+                <th>Status</th>
+                <th class="text-end">Betrag</th>
+                <th class="text-end">Aktionen</th>
             </tr>
         </thead>
         <tbody>
@@ -57,7 +57,7 @@ else
                         @if (inv.CancelsInvoice is not null)
                         {
                             <br />
-                            <small class="text-muted">Storno de @inv.CancelsInvoice.InvoiceNumber</small>
+                            <small class="text-muted">Storno zu @inv.CancelsInvoice.InvoiceNumber</small>
                         }
                     </td>
                     <td>@inv.Client?.Name</td>
@@ -67,20 +67,20 @@ else
                     <td class="text-end">
                         @if (inv.Status == InvoiceStatus.Draft)
                         {
-                            <a class="btn btn-sm btn-outline-primary" href="@($"/app/factures/{inv.Id}")">Modifier</a>
-                            <button class="btn btn-sm btn-success" @onclick="() => _pendingIssue = inv">Émettre</button>
-                            <button class="btn btn-sm btn-outline-danger" @onclick="() => _pendingDelete = inv">Supprimer</button>
+                            <a class="btn btn-sm btn-outline-primary" href="@($"/app/rechnungen/{inv.Id}")">Bearbeiten</a>
+                            <button class="btn btn-sm btn-success" @onclick="() => _pendingIssue = inv">Ausstellen</button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => _pendingDelete = inv">Löschen</button>
                         }
                         else
                         {
-                            <a class="btn btn-sm btn-outline-secondary" href="@($"/app/factures/{inv.Id}/pdf")" target="_blank">PDF</a>
+                            <a class="btn btn-sm" href="@($"/app/rechnungen/{inv.Id}/pdf")" target="_blank">PDF</a>
                         }
                         @if (inv.Status == InvoiceStatus.Issued && inv.CancelsInvoiceId is null)
                         {
-                            <button class="btn btn-sm btn-success" @onclick="() => MarkPaidAsync(inv.Id)">Marquer payée</button>
-                            <button class="btn btn-sm btn-outline-warning" @onclick="() => _pendingCancel = inv">Annuler (Storno)</button>
+                            <button class="btn btn-sm btn-success" @onclick="() => MarkPaidAsync(inv.Id)">Als bezahlt</button>
+                            <button class="btn btn-sm btn-outline-warning" @onclick="() => _pendingCancel = inv">Stornieren</button>
                         }
-                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => DuplicateAsync(inv.Id)">Dupliquer</button>
+                        <button class="btn btn-sm" @onclick="() => DuplicateAsync(inv.Id)">Duplizieren</button>
                     </td>
                 </tr>
             }
@@ -93,15 +93,15 @@ else
 {
     <div class="alert alert-warning">
         <p class="mb-2">
-            <strong>Émettre définitivement cette facture ?</strong><br />
-            Un numéro lui sera attribué et le PDF sera archivé. Conformément aux principes
-            GoBD, elle ne pourra plus être modifiée ni supprimée : seule une facture
-            d'annulation (Storno) permettra de la corriger.
+            <strong>Rechnung endgültig ausstellen ?</strong><br />
+            Sie erhält eine Rechnungsnummer und das PDF wird archiviert. Nach den
+            GoBD-Grundsätzen kann sie danach weder geändert noch gelöscht werden —
+            eine Korrektur ist nur über eine Stornorechnung möglich.
         </p>
         <button class="btn btn-sm btn-success" @onclick="ConfirmIssueAsync" disabled="@_issuing">
-            @(_issuing ? "Émission…" : "Émettre")
+            @(_issuing ? "Wird ausgestellt…" : "Ausstellen")
         </button>
-        <button class="btn btn-sm btn-secondary" @onclick="() => _pendingIssue = null">Annuler</button>
+        <button class="btn btn-sm" @onclick="() => _pendingIssue = null">Abbrechen</button>
     </div>
 }
 
@@ -109,24 +109,24 @@ else
 {
     <div class="alert alert-warning">
         <p class="mb-2">
-            <strong>Annuler la facture @_pendingCancel.InvoiceNumber ?</strong><br />
-            Une facture d'annulation (Stornorechnung) sera créée avec des montants
-            négatifs et son propre numéro. La facture d'origine passera en « Annulée ».
-            Vous pourrez ensuite établir une nouvelle facture corrigée.
+            <strong>Rechnung @_pendingCancel.InvoiceNumber stornieren ?</strong><br />
+            Es wird eine Stornorechnung mit negativen Beträgen und eigener Nummer
+            erstellt. Die Ursprungsrechnung wird als storniert gekennzeichnet.
+            Anschließend können Sie eine korrigierte Rechnung stellen.
         </p>
-        <button class="btn btn-sm btn-warning" @onclick="ConfirmCancelAsync" disabled="@_working">
-            @(_working ? "Annulation…" : "Créer le Storno")
+        <button class="btn btn-sm btn-outline-warning" @onclick="ConfirmCancelAsync" disabled="@_working">
+            @(_working ? "Wird storniert…" : "Storno erstellen")
         </button>
-        <button class="btn btn-sm btn-secondary" @onclick="() => _pendingCancel = null">Retour</button>
+        <button class="btn btn-sm" @onclick="() => _pendingCancel = null">Zurück</button>
     </div>
 }
 
 @if (_pendingDelete is not null)
 {
     <div class="alert alert-warning">
-        <p>Supprimer définitivement ce brouillon ?</p>
-        <button class="btn btn-sm btn-danger" @onclick="ConfirmDeleteAsync">Confirmer</button>
-        <button class="btn btn-sm btn-secondary" @onclick="() => _pendingDelete = null">Annuler</button>
+        <p>Diesen Entwurf endgültig löschen ?</p>
+        <button class="btn btn-sm btn-danger" @onclick="ConfirmDeleteAsync">Löschen</button>
+        <button class="btn btn-sm" @onclick="() => _pendingDelete = null">Abbrechen</button>
     </div>
 }
 
@@ -151,37 +151,13 @@ else
         try
         {
             await InvoiceService.MarkAsPaidAsync(id);
-            _success = "Facture marquée payée. La recette a été ajoutée au journal.";
+            _success = "Rechnung als bezahlt markiert. Die Einnahme steht im Journal.";
         }
         catch (DomainException ex)
         {
             _error = ex.Message;
         }
         await Load();
-    }
-
-    private async Task ConfirmCancelAsync()
-    {
-        if (_pendingCancel is null) return;
-
-        _error = null;
-        _success = null;
-        _working = true;
-        try
-        {
-            var storno = await InvoiceService.CancelAsync(_pendingCancel.Id);
-            _success = $"Facture d'annulation {storno.InvoiceNumber} créée et archivée.";
-        }
-        catch (DomainException ex)
-        {
-            _error = ex.Message;
-        }
-        finally
-        {
-            _working = false;
-            _pendingCancel = null;
-            await Load();
-        }
     }
 
     private async Task ConfirmIssueAsync()
@@ -194,7 +170,7 @@ else
         try
         {
             var issued = await InvoiceService.IssueAsync(_pendingIssue.Id);
-            _success = $"Facture {issued.InvoiceNumber} émise et archivée.";
+            _success = $"Rechnung {issued.InvoiceNumber} ausgestellt und archiviert.";
         }
         catch (DomainException ex)
         {
@@ -208,10 +184,34 @@ else
         }
     }
 
+    private async Task ConfirmCancelAsync()
+    {
+        if (_pendingCancel is null) return;
+
+        _error = null;
+        _success = null;
+        _working = true;
+        try
+        {
+            var storno = await InvoiceService.CancelAsync(_pendingCancel.Id);
+            _success = $"Stornorechnung {storno.InvoiceNumber} erstellt und archiviert.";
+        }
+        catch (DomainException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _working = false;
+            _pendingCancel = null;
+            await Load();
+        }
+    }
+
     private async Task DuplicateAsync(int id)
     {
         var copy = await InvoiceService.DuplicateAsDraftAsync(id);
-        Nav.NavigateTo($"/app/factures/{copy.Id}");
+        Nav.NavigateTo($"/app/rechnungen/{copy.Id}");
     }
 
     private async Task ConfirmDeleteAsync()
@@ -232,10 +232,10 @@ else
 
     private static string StatusLabel(InvoiceStatus s) => s switch
     {
-        InvoiceStatus.Draft => "Brouillon",
-        InvoiceStatus.Issued => "Émise",
-        InvoiceStatus.Paid => "Payée",
-        InvoiceStatus.Cancelled => "Annulée",
+        InvoiceStatus.Draft => "Entwurf",
+        InvoiceStatus.Issued => "Gestellt",
+        InvoiceStatus.Paid => "Bezahlt",
+        InvoiceStatus.Cancelled => "Storniert",
         _ => s.ToString()
     };
 

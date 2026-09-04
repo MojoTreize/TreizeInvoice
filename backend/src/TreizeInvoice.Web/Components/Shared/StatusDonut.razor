@@ -3,7 +3,7 @@
 <div class="donut-block">
     <div class="donut-wrap">
         <svg class="donut" viewBox="0 0 42 42" role="img"
-             aria-label="Répartition des factures par statut">
+             aria-label="Rechnungen nach Status">
             <circle class="donut-track" cx="21" cy="21" r="@Fmt(R)" />
             @{
                 double offset = 0;
@@ -20,7 +20,7 @@
         </svg>
         <div class="donut-center">
             <div class="donut-total">@Total</div>
-            <div class="donut-caption">factures</div>
+            <div class="donut-caption">Rechnungen</div>
         </div>
     </div>
 
@@ -57,10 +57,10 @@
 
     private static string Label(InvoiceStatus s) => s switch
     {
-        InvoiceStatus.Draft => "Brouillon",
-        InvoiceStatus.Issued => "Émise",
-        InvoiceStatus.Paid => "Payée",
-        InvoiceStatus.Cancelled => "Annulée",
+        InvoiceStatus.Draft => "Entwurf",
+        InvoiceStatus.Issued => "Gestellt",
+        InvoiceStatus.Paid => "Bezahlt",
+        InvoiceStatus.Cancelled => "Storniert",
         _ => s.ToString()
     };
 

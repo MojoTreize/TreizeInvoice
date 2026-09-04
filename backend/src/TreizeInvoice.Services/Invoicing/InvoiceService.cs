@@ -173,11 +173,11 @@ public class InvoiceService : IInvoiceService
 
         if (invoice.Status != InvoiceStatus.Issued)
             throw new DomainException(
-                "Seule une facture émise peut être marquée comme payée.");
+                "Nur eine gestellte Rechnung kann als bezahlt markiert werden.");
 
         if (invoice.CancelsInvoiceId is not null)
             throw new DomainException(
-                "Une facture d'annulation ne s'encaisse pas : elle neutralise la facture d'origine.");
+                "Eine Stornorechnung wird nicht vereinnahmt : sie gleicht die Ursprungsrechnung aus.");
 
         invoice.Status = InvoiceStatus.Paid;
         invoice.PaidAtUtc = DateTime.UtcNow;
@@ -188,7 +188,7 @@ public class InvoiceService : IInvoiceService
             Date = paidOn ?? DateOnly.FromDateTime(DateTime.Today),
             Type = JournalEntryType.Recette,
             Amount = invoice.Total,
-            Description = $"Facture {invoice.InvoiceNumber} — {invoice.Client.Name}",
+            Description = $"Rechnung {invoice.InvoiceNumber} — {invoice.Client.Name}",
             Category = "Umsatz",
             InvoiceId = invoice.Id
         });
@@ -209,21 +209,21 @@ public class InvoiceService : IInvoiceService
 
         if (original.Status == InvoiceStatus.Draft)
             throw new DomainException(
-                "Un brouillon n'a pas de valeur légale : supprimez-le au lieu de l'annuler.");
+                "Ein Entwurf hat keine rechtliche Wirkung : bitte löschen statt stornieren.");
 
         if (original.Status == InvoiceStatus.Cancelled)
             throw new DomainException(
-                $"La facture {original.InvoiceNumber} est déjà annulée.");
+                $"Rechnung {original.InvoiceNumber} ist bereits storniert.");
 
         if (original.Status == InvoiceStatus.Paid)
             throw new DomainException(
-                $"La facture {original.InvoiceNumber} est déjà encaissée. " +
-                "Contactez votre conseiller fiscal avant de l'annuler.");
+                $"Rechnung {original.InvoiceNumber} ist bereits vereinnahmt. " +
+                "Bitte klären Sie die Stornierung vorab mit Ihrer Steuerberatung.");
 
         // Sans ce garde-fou, on pourrait enchainer des storno de storno à l'infini.
         if (original.CancelsInvoiceId is not null)
             throw new DomainException(
-                $"La facture {original.InvoiceNumber} est elle-même une facture d'annulation.");
+                $"Rechnung {original.InvoiceNumber} ist selbst eine Stornorechnung.");
 
         var profile = await LoadProfileAsync();
 
@@ -296,7 +296,7 @@ public class InvoiceService : IInvoiceService
     private async Task<BusinessProfile> LoadProfileAsync()
     {
         var profile = await _db.BusinessProfiles.FirstOrDefaultAsync()
-            ?? throw new DomainException("Renseignez d'abord vos informations d'entreprise dans Paramètres.");
+            ?? throw new DomainException("Bitte hinterlegen Sie zuerst Ihre Unternehmensangaben in den Einstellungen.");
         EnsureProfileComplete(profile);
         return profile;
     }
@@ -316,32 +316,32 @@ public class InvoiceService : IInvoiceService
     private static void EnsureIssuable(Invoice invoice)
     {
         if (invoice.ClientId == 0)
-            throw new DomainException("Un client est requis pour émettre la facture.");
+            throw new DomainException("Bitte wählen Sie einen Kunden aus.");
 
         if (invoice.Items.Count == 0)
-            throw new DomainException("La facture doit contenir au moins une ligne.");
+            throw new DomainException("Die Rechnung muss mindestens eine Position enthalten.");
 
         if (invoice.Items.Any(i => string.IsNullOrWhiteSpace(i.Description)))
-            throw new DomainException("Chaque ligne doit avoir une description.");
+            throw new DomainException("Jede Position braucht eine Beschreibung.");
 
         // Les montants négatifs sont réservés aux factures d'annulation (Storno).
         if (invoice.CancelsInvoiceId is null && invoice.Items.Any(i => i.Quantity <= 0 || i.UnitPrice <= 0))
-            throw new DomainException("Chaque ligne doit avoir une quantité et un prix unitaire supérieurs à 0.");
+            throw new DomainException("Menge und Einzelpreis müssen größer als 0 sein.");
     }
 
     /// <summary>Mentions obligatoires §14 UStG côté émettrice.</summary>
     private static void EnsureProfileComplete(BusinessProfile profile)
     {
         var missing = new List<string>();
-        if (string.IsNullOrWhiteSpace(profile.FullName)) missing.Add("nom");
-        if (string.IsNullOrWhiteSpace(profile.Address)) missing.Add("adresse");
+        if (string.IsNullOrWhiteSpace(profile.FullName)) missing.Add("Name");
+        if (string.IsNullOrWhiteSpace(profile.Address)) missing.Add("Anschrift");
         if (string.IsNullOrWhiteSpace(profile.Steuernummer)) missing.Add("Steuernummer");
         if (string.IsNullOrWhiteSpace(profile.Iban)) missing.Add("IBAN");
 
         if (missing.Count > 0)
             throw new DomainException(
-                "Informations d'entreprise incomplètes (" + string.Join(", ", missing) +
-                "). Complétez-les dans Paramètres avant d'émettre une facture.");
+                "Ihre Unternehmensangaben sind unvollständig (" + string.Join(", ", missing) +
+                "). Bitte ergänzen Sie sie in den Einstellungen, bevor Sie eine Rechnung stellen.");
     }
 
     /// <summary>
@@ -352,8 +352,8 @@ public class InvoiceService : IInvoiceService
     {
         if (invoice.Status != InvoiceStatus.Draft)
             throw new InvoiceLockedException(
-                $"La facture {invoice.InvoiceNumber} est émise : elle ne peut plus être modifiée ni supprimée. " +
-                "Utilisez une facture d'annulation (Storno) pour la corriger.");
+                $"Rechnung {invoice.InvoiceNumber} ist bereits gestellt und kann nicht mehr " +
+                "geändert oder gelöscht werden. Korrekturen erfolgen über eine Stornorechnung.");
     }
 
     private void SyncItems(Invoice existing, ICollection<InvoiceItem> incoming)

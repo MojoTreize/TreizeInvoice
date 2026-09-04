@@ -7,10 +7,10 @@
 
 <div class="page-head">
     <div>
-        <h1 class="underlined">Journal recettes / dépenses</h1>
+        <h1 class="underlined">Einnahmen / Ausgaben</h1>
         <p class="greeting-sub">
-            Base de votre EÜR. Les recettes des factures payées y sont ajoutées
-            automatiquement ; les dépenses se saisissent ici.
+            Grundlage Ihrer EÜR. Einnahmen aus bezahlten Rechnungen entstehen
+            automatisch ; Ausgaben erfassen Sie hier.
         </p>
     </div>
     <div class="page-actions">
@@ -20,7 +20,7 @@
                 <option value="@y">@y</option>
             }
         </select>
-        <a class="btn" href="@($"/app/journal/export?year={_year}")">Export CSV @_year</a>
+        <a class="btn" href="@($"/app/journal/export?year={_year}")">CSV-Export @_year</a>
     </div>
 </div>
 
@@ -33,15 +33,15 @@
 {
     <div class="kpi-grid cols-3">
         <div class="kpi">
-            <span class="kpi-label">Recettes @_year</span>
+            <span class="kpi-label">Einnahmen @_year</span>
             <span class="kpi-value accent-green">@_summary.Revenue.ToString("N2") €</span>
         </div>
         <div class="kpi">
-            <span class="kpi-label">Dépenses @_year</span>
+            <span class="kpi-label">Ausgaben @_year</span>
             <span class="kpi-value">@_summary.Expenses.ToString("N2") €</span>
         </div>
         <div class="kpi">
-            <span class="kpi-label">Résultat @_year</span>
+            <span class="kpi-label">Ergebnis @_year</span>
             <span class="kpi-value @(_summary.Result < 0 ? "accent-red" : "accent-green")">
                 @_summary.Result.ToString("N2") €
             </span>
@@ -51,75 +51,75 @@
 
 <section class="panel">
     <div class="panel-head">
-        <h2 class="underlined accent">Ajouter une dépense</h2>
+        <h2 class="underlined accent">Ausgabe erfassen</h2>
     </div>
 
     <EditForm Model="_newEntry" OnValidSubmit="AddAsync" FormName="journalEntry">
         <DataAnnotationsValidator />
 
-    <div class="row align-items-end">
-        <div class="form-group col-md-2">
-            <label>Date</label>
-            <InputDate class="form-control" @bind-Value="_newEntry.Date" />
+        <div class="row align-items-end">
+            <div class="form-group col-md-2">
+                <label>Datum</label>
+                <InputDate class="form-control" @bind-Value="_newEntry.Date" />
+            </div>
+            <div class="form-group col-md-2">
+                <label>Art</label>
+                <InputSelect class="form-select" @bind-Value="_newEntry.Type">
+                    <option value="@JournalEntryType.Depense">Ausgabe</option>
+                    <option value="@JournalEntryType.Recette">Einnahme</option>
+                </InputSelect>
+            </div>
+            <div class="form-group col-md-2">
+                <label>Kategorie</label>
+                <InputText class="form-control" list="categories" @bind-Value="_newEntry.Category" />
+                <datalist id="categories">
+                    @foreach (var c in SuggestedCategories)
+                    {
+                        <option value="@c"></option>
+                    }
+                </datalist>
+            </div>
+            <div class="form-group col-md-4">
+                <label>Beschreibung</label>
+                <InputText class="form-control" @bind-Value="_newEntry.Description" />
+                <ValidationMessage For="() => _newEntry.Description" />
+            </div>
+            <div class="form-group col-md-2">
+                <label>Betrag (€)</label>
+                <InputNumber class="form-control text-end" @bind-Value="_newEntry.Amount" />
+                <ValidationMessage For="() => _newEntry.Amount" />
+            </div>
         </div>
-        <div class="form-group col-md-2">
-            <label>Type</label>
-            <InputSelect class="form-select" @bind-Value="_newEntry.Type">
-                <option value="@JournalEntryType.Depense">Dépense</option>
-                <option value="@JournalEntryType.Recette">Recette</option>
-            </InputSelect>
-        </div>
-        <div class="form-group col-md-2">
-            <label>Catégorie</label>
-            <InputText class="form-control" list="categories" @bind-Value="_newEntry.Category" />
-            <datalist id="categories">
-                @foreach (var c in SuggestedCategories)
-                {
-                    <option value="@c"></option>
-                }
-            </datalist>
-        </div>
-        <div class="form-group col-md-4">
-            <label>Description</label>
-            <InputText class="form-control" @bind-Value="_newEntry.Description" />
-            <ValidationMessage For="() => _newEntry.Description" />
-        </div>
-        <div class="form-group col-md-2">
-            <label>Montant (€)</label>
-            <InputNumber class="form-control text-end" @bind-Value="_newEntry.Amount" />
-            <ValidationMessage For="() => _newEntry.Amount" />
-        </div>
-    </div>
 
-    <button type="submit" class="btn btn-primary mt-2">Ajouter</button>
+        <button type="submit" class="btn btn-primary mt-2">Hinzufügen</button>
     </EditForm>
 </section>
 
 <div class="panel-grid">
 <section class="panel">
     <div class="panel-head">
-        <h2 class="underlined">Écritures @_year</h2>
+        <h2 class="underlined">Buchungen @_year</h2>
     </div>
 
 @if (_entries is null)
 {
-    <p>Chargement…</p>
+    <p>Wird geladen…</p>
 }
 else if (_entries.Count == 0)
 {
-    <p class="text-muted">Aucune écriture pour @_year.</p>
+    <p class="text-muted">Keine Buchungen für @_year.</p>
 }
 else
 {
     <table class="table table-hover align-middle">
         <thead>
             <tr>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Catégorie</th>
-                <th>Description</th>
-                <th>Facture</th>
-                <th class="text-end">Montant</th>
+                <th>Datum</th>
+                <th>Art</th>
+                <th>Kategorie</th>
+                <th>Beschreibung</th>
+                <th>Rechnung</th>
+                <th class="text-end">Betrag</th>
                 <th></th>
             </tr>
         </thead>
@@ -130,7 +130,7 @@ else
                     <td>@e.Date.ToString("dd.MM.yyyy")</td>
                     <td>
                         <span class="badge @(e.Type == JournalEntryType.Recette ? "bg-success" : "bg-secondary")">
-                            @(e.Type == JournalEntryType.Recette ? "Recette" : "Dépense")
+                            @(e.Type == JournalEntryType.Recette ? "Einnahme" : "Ausgabe")
                         </span>
                     </td>
                     <td>@e.Category</td>
@@ -140,11 +140,11 @@ else
                     <td class="text-end">
                         @if (e.IsGenerated)
                         {
-                            <span class="text-muted small">automatique</span>
+                            <span class="text-muted small">automatisch</span>
                         }
                         else
                         {
-                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(e.Id)">Supprimer</button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(e.Id)">Löschen</button>
                         }
                     </td>
                 </tr>
@@ -156,7 +156,7 @@ else
 
 <section class="panel">
     <div class="panel-head">
-        <h2 class="underlined accent">Totaux par catégorie</h2>
+        <h2 class="underlined accent">Summen je Kategorie</h2>
     </div>
 
     @if (_summary is { ByCategory.Count: > 0 })
@@ -164,9 +164,9 @@ else
         <table class="table table-sm">
             <thead>
                 <tr>
-                    <th>Catégorie</th>
-                    <th class="text-end">Recettes</th>
-                    <th class="text-end">Dépenses</th>
+                    <th>Kategorie</th>
+                    <th class="text-end">Einnahmen</th>
+                    <th class="text-end">Ausgaben</th>
                 </tr>
             </thead>
             <tbody>
@@ -183,7 +183,7 @@ else
     }
     else
     {
-        <p class="text-muted">Aucune catégorie pour @_year.</p>
+        <p class="text-muted">Keine Kategorien für @_year.</p>
     }
 </section>
 </div>

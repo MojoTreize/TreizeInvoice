@@ -11,7 +11,7 @@ namespace TreizeInvoice.Services.Journal;
 
 public class JournalService : IJournalService
 {
-    public const string UncategorizedLabel = "Sans catégorie";
+    public const string UncategorizedLabel = "Ohne Kategorie";
 
     private static readonly CultureInfo De = CultureInfo.GetCultureInfo("de-DE");
 
@@ -60,10 +60,10 @@ public class JournalService : IJournalService
     public async Task AddManualAsync(JournalEntry entry)
     {
         if (entry.Amount <= 0)
-            throw new DomainException("Le montant doit être supérieur à 0.");
+            throw new DomainException("Der Betrag muss größer als 0 sein.");
 
         if (string.IsNullOrWhiteSpace(entry.Description))
-            throw new DomainException("La description est requise.");
+            throw new DomainException("Bitte geben Sie eine Beschreibung an.");
 
         entry.InvoiceId = null; // une écriture manuelle n'est jamais rattachée à une facture
         _db.JournalEntries.Add(entry);
@@ -81,7 +81,7 @@ public class JournalService : IJournalService
         // Les recettes issues d'une facture suivent le sort de la facture (GoBD).
         if (entry.InvoiceId is not null)
             throw new DomainException(
-                "Cette recette provient d'une facture payée : elle ne peut pas être supprimée à la main.");
+                "Diese Einnahme stammt aus einer bezahlten Rechnung und kann nicht von Hand gelöscht werden.");
 
         _db.JournalEntries.Remove(entry);
         await _db.SaveChangesAsync();
@@ -99,12 +99,12 @@ public class JournalService : IJournalService
             .ToListAsync();
 
         var csv = new StringBuilder();
-        csv.Append("Date;Type;Catégorie;Description;Montant;N° facture\r\n");
+        csv.Append("Datum;Art;Kategorie;Beschreibung;Betrag;Rechnungsnummer\r\n");
 
         foreach (var e in entries)
         {
             csv.Append(e.Date.ToString("dd.MM.yyyy", De)).Append(';')
-               .Append(e.Type == JournalEntryType.Recette ? "Recette" : "Dépense").Append(';')
+               .Append(e.Type == JournalEntryType.Recette ? "Einnahme" : "Ausgabe").Append(';')
                .Append(Field(e.Category)).Append(';')
                .Append(Field(e.Description)).Append(';')
                .Append(e.SignedAmount.ToString("0.00", De)).Append(';')

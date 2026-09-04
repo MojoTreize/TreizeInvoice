@@ -7,7 +7,7 @@
 @inject IAuthService AuthService
 @inject NavigationManager Nav
 
-<PageTitle>Connexion — TreizeInvoice</PageTitle>
+<PageTitle>Anmelden — TreizeInvoice</PageTitle>
 
 <svg class="auth-logo" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <rect x="0" y="0" width="96" height="96" rx="14" fill="#2946B8" />
@@ -19,7 +19,7 @@
 </svg>
 
 <h1 class="auth-title">TreizeInvoice</h1>
-<p class="auth-subtitle">Connexion à votre espace de facturation</p>
+<p class="auth-subtitle">Anmeldung zu Ihrer Rechnungsstellung</p>
 
 <EditForm Model="Input" OnValidSubmit="LoginAsync" FormName="login" method="post">
     <DataAnnotationsValidator />
@@ -30,22 +30,22 @@
     }
 
     <div class="form-group">
-        <label for="username">Identifiant</label>
+        <label for="username">Benutzername</label>
         <InputText id="username" class="form-control" @bind-Value="Input.Username" autocomplete="username" />
         <ValidationMessage For="() => Input.Username" />
     </div>
 
     <div class="form-group">
-        <label for="password">Mot de passe</label>
+        <label for="password">Passwort</label>
         <InputText id="password" type="password" class="form-control" @bind-Value="Input.Password" autocomplete="current-password" />
         <ValidationMessage For="() => Input.Password" />
     </div>
 
-    <button type="submit" class="btn btn-primary w-100">Se connecter</button>
+    <button type="submit" class="btn btn-primary w-100">Anmelden</button>
 </EditForm>
 
 <p class="auth-footer">
-    Pas encore de compte ? <a href="/register">Inscription</a>
+    Noch kein Konto ? <a href="/register">Registrieren</a>
 </p>
 
 @code {
@@ -65,7 +65,7 @@
         var user = await AuthService.ValidateCredentialsAsync(Input.Username, Input.Password);
         if (user is null)
         {
-            _error = "Identifiant ou mot de passe incorrect.";
+            _error = "Benutzername oder Passwort ist falsch.";
             return;
         }
 
@@ -84,10 +84,10 @@
 
     public class LoginModel
     {
-        [Required(ErrorMessage = "L'identifiant est requis.")]
+        [Required(ErrorMessage = "Bitte geben Sie Ihren Benutzernamen an.")]
         public string Username { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Le mot de passe est requis.")]
+        [Required(ErrorMessage = "Bitte geben Sie Ihr Passwort an.")]
         public string Password { get; set; } = string.Empty;
     }
 }

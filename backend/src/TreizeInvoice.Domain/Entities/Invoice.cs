@@ -12,7 +12,7 @@ public class Invoice
 {
     public int Id { get; set; }
 
-    [Range(1, int.MaxValue, ErrorMessage = "Le client est requis.")]
+    [Range(1, int.MaxValue, ErrorMessage = "Bitte wählen Sie einen Kunden aus.")]
     public int ClientId { get; set; }
     public Client Client { get; set; } = null!;
 
@@ -30,7 +30,7 @@ public class Invoice
     public string? ServicePeriod { get; set; }
 
     /// <summary>Délai de paiement en jours (défaut 14).</summary>
-    [Range(1, 365, ErrorMessage = "Le délai de paiement doit être compris entre 1 et 365 jours.")]
+    [Range(1, 365, ErrorMessage = "Das Zahlungsziel muss zwischen 1 und 365 Tagen liegen.")]
     public int PaymentTermDays { get; set; } = 14;
 
     public string? Notes { get; set; }

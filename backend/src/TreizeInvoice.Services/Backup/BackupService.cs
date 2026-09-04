@@ -52,7 +52,7 @@ public class BackupService : IBackupService
                 }
             }
 
-            return (await File.ReadAllBytesAsync(zipPath), $"treizeinvoice-sauvegarde-{stamp}.zip");
+            return (await File.ReadAllBytesAsync(zipPath), $"treizeinvoice-sicherung-{stamp}.zip");
         }
         finally
         {

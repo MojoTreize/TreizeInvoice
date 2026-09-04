@@ -921,7 +921,7 @@ label {
 }
 
 .blazor-error-boundary::after {
-    content: "Une erreur est survenue.";
+    content: "Ein Fehler ist aufgetreten.";
 }
 
 /* ---------- Adaptatif ---------- */

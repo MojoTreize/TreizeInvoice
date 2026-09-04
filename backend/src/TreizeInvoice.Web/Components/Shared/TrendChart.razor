@@ -2,9 +2,9 @@
 
 <div class="chart">
     <div class="chart-legend">
-        <span class="legend-item"><i class="dot-revenue"></i> Encaissements</span>
-        <span class="legend-item"><i class="dot-expenses"></i> Dépenses</span>
-        <span class="legend-item"><i class="dot-result"></i> Résultat</span>
+        <span class="legend-item"><i class="dot-revenue"></i> Einnahmen</span>
+        <span class="legend-item"><i class="dot-expenses"></i> Ausgaben</span>
+        <span class="legend-item"><i class="dot-result"></i> Ergebnis</span>
     </div>
 
     <div class="chart-yaxis">
@@ -15,7 +15,7 @@
     </div>
 
     <svg viewBox="0 0 @W @H" preserveAspectRatio="none" role="img"
-         aria-label="Encaissements, dépenses et résultat par mois">
+         aria-label="Einnahmen, Ausgaben und Ergebnis je Monat">
         @foreach (var tick in Ticks)
         {
             var y = Y(tick);
@@ -57,8 +57,8 @@
     private const int Pad = 10;
 
     private static readonly string[] MonthLabels =
-        { "Janv.", "Févr.", "Mars", "Avril", "Mai", "Juin",
-          "Juil.", "Août", "Sept.", "Oct.", "Nov.", "Déc." };
+        { "Jan.", "Feb.", "März", "Apr.", "Mai", "Juni",
+          "Juli", "Aug.", "Sep.", "Okt.", "Nov.", "Dez." };
 
     private decimal Upper => Points.Count == 0 ? 0 : Points.Max(p => Math.Max(p.Revenue, p.Revenue - p.Expenses));
     private decimal Lower => Points.Count == 0 ? 0 : Points.Min(p => Math.Min(-p.Expenses, p.Revenue - p.Expenses));

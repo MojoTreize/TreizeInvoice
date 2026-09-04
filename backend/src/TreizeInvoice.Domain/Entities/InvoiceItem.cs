@@ -13,14 +13,14 @@ public class InvoiceItem
     public int InvoiceId { get; set; }
     public Invoice Invoice { get; set; } = null!;
 
-    [Required(ErrorMessage = "La description est requise.")]
+    [Required(ErrorMessage = "Bitte geben Sie eine Beschreibung an.")]
     [MaxLength(500)]
     public string Description { get; set; } = string.Empty;
 
-    [Range(0.001, double.MaxValue, ErrorMessage = "La quantité doit être supérieure à 0.")]
+    [Range(0.001, double.MaxValue, ErrorMessage = "Die Menge muss größer als 0 sein.")]
     public decimal Quantity { get; set; } = 1;
 
-    [Range(0.01, double.MaxValue, ErrorMessage = "Le prix unitaire doit être supérieur à 0.")]
+    [Range(0.01, double.MaxValue, ErrorMessage = "Der Einzelpreis muss größer als 0 sein.")]
     public decimal UnitPrice { get; set; }
 
     /// <summary>Total de la ligne (quantité × prix unitaire), arrondi à 2 décimales.</summary>

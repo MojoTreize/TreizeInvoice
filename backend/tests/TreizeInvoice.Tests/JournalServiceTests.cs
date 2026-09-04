@@ -123,7 +123,7 @@ public class JournalServiceTests
         var entryId = await SeedPaidInvoiceRevenueAsync(db);
 
         var ex = await Assert.ThrowsAsync<DomainException>(() => service.DeleteManualAsync(entryId));
-        Assert.Contains("facture payée", ex.Message);
+        Assert.Contains("bezahlten Rechnung", ex.Message);
     }
 
     // --- Export CSV ---
@@ -138,8 +138,8 @@ public class JournalServiceTests
         var csv = Decode(await service.ExportCsvAsync(2026));
         var lines = csv.Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
 
-        Assert.Equal("Date;Type;Catégorie;Description;Montant;N° facture", lines[0]);
-        Assert.Equal("12.05.2026;Dépense;\"Hosting / Domain\";\"Domain treizeinvoice.de\";-49,90;", lines[1]);
+        Assert.Equal("Datum;Art;Kategorie;Beschreibung;Betrag;Rechnungsnummer", lines[0]);
+        Assert.Equal("12.05.2026;Ausgabe;\"Hosting / Domain\";\"Domain treizeinvoice.de\";-49,90;", lines[1]);
     }
 
     [Fact]

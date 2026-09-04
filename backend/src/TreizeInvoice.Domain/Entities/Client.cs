@@ -11,7 +11,7 @@ public class Client
     public int Id { get; set; }
 
     /// <summary>Nom ou raison sociale.</summary>
-    [Required(ErrorMessage = "Le nom est requis.")]
+    [Required(ErrorMessage = "Bitte geben Sie einen Namen an.")]
     [MaxLength(200)]
     public string Name { get; set; } = string.Empty;
 
@@ -21,7 +21,7 @@ public class Client
     /// <summary>Adresse complète, multi-lignes.</summary>
     public string Address { get; set; } = string.Empty;
 
-    [EmailAddress(ErrorMessage = "Email invalide.")]
+    [EmailAddress(ErrorMessage = "Ungültige E-Mail-Adresse.")]
     public string? Email { get; set; }
     public string? Phone { get; set; }
     public string? Notes { get; set; }

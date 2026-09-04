@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using System.Globalization;
 using TreizeInvoice.Data;
 using TreizeInvoice.Services.Auditing;
 using TreizeInvoice.Services.Auth;
@@ -19,6 +20,12 @@ using TreizeInvoice.Services.Setup;
 using TreizeInvoice.Web.Components;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Toute l'application est en allemand : montants 1.234,56 et dates 04.09.2026,
+// quelle que soit la langue du serveur qui l'héberge.
+var german = new CultureInfo("de-DE");
+CultureInfo.DefaultThreadCurrentCulture = german;
+CultureInfo.DefaultThreadCurrentUICulture = german;
 
 // --- Emplacements de stockage ---
 // Configurables (Storage:DataPath, Storage:LogoPath) : après publication, les
@@ -106,8 +113,8 @@ using (var scope = app.Services.CreateScope())
     {
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         logger.LogWarning(
-            "Compte initial créé — identifiant : {Username} / mot de passe : {Password}. " +
-            "Notez-le puis changez-le dans Paramètres.", seedUsername, generated);
+            "Zugang angelegt — Benutzername: {Username} / Passwort: {Password}. " +
+            "Bitte notieren und in den Einstellungen ändern.", seedUsername, generated);
     }
 }
 
@@ -150,7 +157,7 @@ app.MapPost("/auth/logout", async (HttpContext ctx) =>
 }).DisableAntiforgery();
 
 // Sert toujours le PDF archivé à l'émission, jamais une régénération (GoBD).
-app.MapGet("/app/factures/{id:int}/pdf", async (int id, IInvoiceService invoices) =>
+app.MapGet("/app/rechnungen/{id:int}/pdf", async (int id, IInvoiceService invoices) =>
 {
     var pdf = await invoices.GetArchivedPdfAsync(id);
     return pdf is null
@@ -164,7 +171,7 @@ app.MapGet("/app/journal/export", async (int year, IJournalService journal) =>
     return Results.File(csv, "text/csv", $"journal-{year}.csv");
 }).RequireAuthorization();
 
-app.MapGet("/app/sauvegarde", async (IBackupService backup) =>
+app.MapGet("/app/sicherung", async (IBackupService backup) =>
 {
     var archive = await backup.CreateAsync();
     return Results.File(archive.Content, "application/zip", archive.FileName);

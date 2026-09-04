@@ -1,35 +1,34 @@
-@page "/app/clients"
+@page "/app/kunden"
 @attribute [Authorize]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject IClientService ClientService
-@inject NavigationManager Nav
 
-<PageTitle>Clients — TreizeInvoice</PageTitle>
+<PageTitle>Kunden — TreizeInvoice</PageTitle>
 
 <div class="page-head">
     <div>
-        <h1 class="underlined">Clients</h1>
-        <p class="greeting-sub">Leurs coordonnées sont reprises sur vos factures.</p>
+        <h1 class="underlined">Kunden</h1>
+        <p class="greeting-sub">Diese Angaben erscheinen auf Ihren Rechnungen.</p>
     </div>
     <div class="page-actions">
-        <a class="btn btn-primary" href="/app/clients/nouveau">+ Nouveau client</a>
+        <a class="btn btn-primary" href="/app/kunden/neu">+ Neuer Kunde</a>
     </div>
 </div>
 
 <section class="panel">
 <div class="mb-3">
-    <input class="form-control" placeholder="Rechercher (nom, contact, email)…"
+    <input class="form-control" placeholder="Suchen (Name, Ansprechpartner, E-Mail)…"
            value="@_search" @oninput="OnSearchInput" />
 </div>
 
 @if (_clients is null)
 {
-    <p>Chargement…</p>
+    <p>Wird geladen…</p>
 }
 else if (_clients.Count == 0)
 {
     <p class="text-muted">
-        @(string.IsNullOrWhiteSpace(_search) ? "Aucun client." : "Aucun client pour cette recherche.")
+        @(string.IsNullOrWhiteSpace(_search) ? "Noch keine Kunden." : "Keine Kunden zu dieser Suche.")
     </p>
 }
 else
@@ -37,11 +36,11 @@ else
     <table class="table table-hover align-middle">
         <thead>
             <tr>
-                <th>Nom</th>
-                <th>Contact</th>
-                <th>Email</th>
-                <th>Téléphone</th>
-                <th class="text-end">Actions</th>
+                <th>Name</th>
+                <th>Ansprechpartner</th>
+                <th>E-Mail</th>
+                <th>Telefon</th>
+                <th class="text-end">Aktionen</th>
             </tr>
         </thead>
         <tbody>
@@ -53,8 +52,8 @@ else
                     <td>@c.Email</td>
                     <td>@c.Phone</td>
                     <td class="text-end">
-                        <a class="btn btn-sm btn-outline-primary" href="@($"/app/clients/{c.Id}")">Modifier</a>
-                        <button class="btn btn-sm btn-outline-danger" @onclick="() => AskDelete(c)">Supprimer</button>
+                        <a class="btn btn-sm btn-outline-primary" href="@($"/app/kunden/{c.Id}")">Bearbeiten</a>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => AskDelete(c)">Löschen</button>
                     </td>
                 </tr>
             }
@@ -67,17 +66,17 @@ else
 {
     <div class="alert alert-warning">
         <p>
-            Supprimer <strong>@_pendingDelete.Name</strong> ?
+            <strong>@_pendingDelete.Name</strong> löschen ?
             @if (_pendingDeleteInvoices > 0)
             {
                 <span>
-                    Ce client a @_pendingDeleteInvoices facture(s) : il sera masqué
-                    (suppression logique) mais conservé pour la traçabilité.
+                    Zu diesem Kunden gehören @_pendingDeleteInvoices Rechnung(en). Der Kunde
+                    wird ausgeblendet, aber zur Nachvollziehbarkeit aufbewahrt (GoBD).
                 </span>
             }
         </p>
-        <button class="btn btn-sm btn-danger" @onclick="ConfirmDelete">Confirmer</button>
-        <button class="btn btn-sm btn-secondary" @onclick="() => _pendingDelete = null">Annuler</button>
+        <button class="btn btn-sm btn-danger" @onclick="ConfirmDelete">Löschen</button>
+        <button class="btn btn-sm" @onclick="() => _pendingDelete = null">Abbrechen</button>
     </div>
 }
 

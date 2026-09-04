@@ -25,7 +25,7 @@ public class BackupServiceTests
         var service = new BackupService(db.Context, new BackupPaths("ignored.db", db.ArchiveRoot));
         var (content, fileName) = await service.CreateAsync();
 
-        Assert.StartsWith("treizeinvoice-sauvegarde-", fileName);
+        Assert.StartsWith("treizeinvoice-sicherung-", fileName);
         Assert.EndsWith(".zip", fileName);
 
         using var zip = new ZipArchive(new MemoryStream(content), ZipArchiveMode.Read);
